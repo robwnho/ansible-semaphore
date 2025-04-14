@@ -17,7 +17,7 @@
         path: "{{ temp_dir }}"
         state: directory
 
-    # Etapa 2: Instalar PowerShell 7 (abordagem alternativa)
+    # Etapa 2: Instalar PowerShell 7
     - name: Baixar PowerShell 7
       win_get_url:
         url: "{{ ps7_download_url }}"
@@ -27,14 +27,15 @@
       delay: 10
       until: download_ps7 is succeeded
 
-    - name: Instalar PowerShell 7 (método alternativo)
+    - name: Instalar PowerShell 7
       win_shell: |
         Start-Process -FilePath "msiexec.exe" -ArgumentList '/i "{{ temp_dir }}\\PowerShell-7.4.1-win-x64.msi" /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1' -Wait
       register: install_ps7
       ignore_errors: yes
 
     - name: Verificar instalação do PowerShell 7
-      win_shell: pwsh -Command "exit 0"
+      win_shell: |
+        "{{ pwsh_path }}" -Command "exit 0"
       register: ps7_check
       ignore_errors: yes
       changed_when: false
@@ -47,7 +48,7 @@
     # Etapa 3: Instalar módulo PSWindowsUpdate
     - name: Instalar módulo PSWindowsUpdate
       win_shell: |
-        pwsh -Command "Install-Module -Name PSWindowsUpdate -Force -AllowClobber"
+        "{{ pwsh_path }}" -Command "Install-Module -Name PSWindowsUpdate -Force -AllowClobber"
       register: install_module
       retries: 3
       delay: 10
@@ -66,19 +67,19 @@
 
     - name: Executar script de criação da tarefa
       win_shell: |
-        pwsh -File "{{ temp_dir }}\\create_update_task.ps1"
+        "{{ pwsh_path }}" -File "{{ temp_dir }}\\create_update_task.ps1"
       register: create_task
 
     # Etapa 5: Executar tarefa imediatamente
     - name: Executar tarefa agendada
       win_shell: |
-        pwsh -Command "Start-ScheduledTask -TaskName '{{ task_name }}'"
+        "{{ pwsh_path }}" -Command "Start-ScheduledTask -TaskName '{{ task_name }}'"
       register: run_task
 
-    # Etapa 6: Monitorar execução
-    - name: Aguardar conclusão das atualizações
-      win_shell: |
-        "{{ pwsh_path }}" -Command "
+    # Etapa 6: Monitorar execução da tarefa
+    - name: Criar script PowerShell para monitorar execução da tarefa
+      win_copy:
+        content: |
           $maxWait = 60
           $counter = 0
           do {
@@ -88,15 +89,18 @@
             $counter += 1
           } while ($counter -lt $maxWait)
           exit 1
-        "
+        dest: "{{ temp_dir }}\\monitor_task.ps1"
+
+    - name: Executar script de monitoramento
+      win_shell: >
+        "{{ pwsh_path }}" -File "{{ temp_dir }}\\monitor_task.ps1"
       register: monitor_task
       ignore_errors: yes
-
 
     # Etapa 7: Verificar necessidade de reinício
     - name: Verificar se reinicialização é necessária
       win_shell: |
-        pwsh -Command "[bool](Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' -ErrorAction SilentlyContinue)"
+        "{{ pwsh_path }}" -Command "[bool](Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' -ErrorAction SilentlyContinue)"
       register: reboot_required
       changed_when: false
 
@@ -106,6 +110,7 @@
         connect_timeout: 600
       when: reboot_required.stdout == "True"
 
+    # Etapa 8: Relatório final
     - name: Relatório final
       debug:
         msg: |
