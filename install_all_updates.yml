@@ -1,6 +1,6 @@
 ---
 - name: Instalar TODAS as atualizações pendentes no Windows e reiniciar se necessário
-  hosts: windows
+  hosts: all
   gather_facts: no
   tasks:
 
