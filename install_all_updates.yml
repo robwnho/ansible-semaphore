@@ -26,10 +26,10 @@
         $counter = 0
         do {
           try {
-            $taskInfo = Get-ScheduledTaskInfo -TaskName "AtualizarComPS7" -ErrorAction Stop
+            $taskInfo = Get-ScheduledTaskInfo -TaskName "{{ task_name }}" -ErrorAction Stop
             $status = $taskInfo.State
             Write-Host "Status da tarefa: $status"
-            if ($status -eq "Ready") {
+            if ($status -eq 'Ready') {
               break
             }
           } catch {
