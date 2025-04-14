@@ -1,0 +1,14 @@
+- name: Install for Updates on Ansible
+  hosts: all
+  tasks:
+    - name: Install MSRT Updates
+      ansible.windows.win_updates:
+        state: installed
+        accept_list:
+        - Windows Malicious Software Removal Tool
+      register: update_results
+
+    - name: Show the updates results
+      debug:
+        msg: |
+          {{ update_results.updates }}
