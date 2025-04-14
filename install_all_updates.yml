@@ -55,12 +55,12 @@
     # Etapa 4: Criar tarefa agendada
     - name: Criar script PowerShell para tarefa agendada
       win_copy:
-      content: |
-        $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"'
-        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-        Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force
-      dest: "{{ temp_dir }}\\create_update_task.ps1"
+        content: |
+          $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"'
+          $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
+          $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+          Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force
+        dest: "{{ temp_dir }}\\create_update_task.ps1"
 
     - name: Executar script de criação da tarefa
       win_shell: |
