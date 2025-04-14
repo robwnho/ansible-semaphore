@@ -1,33 +1,64 @@
 ---
-- name: Instalar TODAS as atualizações pendentes no Windows e reiniciar se necessário
+- name: PREPARAR ambiente para atualizações via Ansible
   hosts: all
   gather_facts: no
   tasks:
 
-    - name: Instalar todas as atualizações disponíveis (sem filtro)
-      win_updates:
-        category_names: []         # Vazio = todas as categorias
-        reboot: yes                # Reiniciar automaticamente se necessário
-        log_path: C:\Temp\ansible-updates-log.txt
-      register: resultado_update
+    - name: Iniciar o serviço do Windows Update
+      win_service:
+        name: wuauserv
+        start_mode: auto
+        state: started
 
-    - name: Exibir resumo das atualizações instaladas
+    - name: Iniciar o serviço de Agendador de Tarefas
+      win_service:
+        name: Schedule
+        start_mode: auto
+        state: started
+
+    - name: Garantir que scripts podem ser executados remotamente
+      win_shell: Set-ExecutionPolicy RemoteSigned -Force
+
+---
+
+- name: INSTALAR todas as atualizações pendentes (modo assíncrono) e reiniciar se necessário
+  hosts: all
+  gather_facts: no
+  tasks:
+
+    - name: Iniciar instalação de todas as atualizações (sem filtro)
+      win_updates:
+        category_names: []   # Vazio = todas as categorias
+        reboot: yes
+      async: 3600
+      poll: 0
+      register: install_job
+
+    - name: Aguardar término da instalação de atualizações
+      async_status:
+        jid: "{{ install_job.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 60           # espera até 60 minutos no total
+      delay: 60             # verifica a cada minuto
+
+    - name: Exibir resumo das atualizações aplicadas
       debug:
         msg: |
-          {% if resultado_update.installed_update_count > 0 %}
-          Atualizações instaladas: {{ resultado_update.installed_update_count }}
-          {% for update in resultado_update.updates %}
+          {% if job_result.result.installed_update_count > 0 %}
+          Atualizações instaladas: {{ job_result.result.installed_update_count }}
+          {% for update in job_result.result.updates %}
           - {{ update.title }}
           {% endfor %}
           {% else %}
           Nenhuma atualização foi instalada.
           {% endif %}
 
-    - name: Verificar se reinício foi necessário
+    - name: Verificar se foi necessário reiniciar
       debug:
         msg: >
-          {% if resultado_update.reboot_required %}
-          Reinício necessário — foi agendado automaticamente.
+          {% if job_result.result.reboot_required %}
+          Reinício foi necessário (realizado automaticamente).
           {% else %}
-          Nenhum reinício necessário.
+          Nenhum reinício foi necessário.
           {% endif %}
