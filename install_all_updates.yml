@@ -20,13 +20,13 @@
       args:
         executable: powershell.exe
 
-    - name: Aguardar a conclusão da tarefa "{{ task_name }}"
-      win_shell: '
+    - name: Aguardar a conclusão da tarefa "AtualizarComPS7"
+      win_shell: |
         $maxWait = 60
         $counter = 0
         do {
           try {
-            $taskInfo = Get-ScheduledTaskInfo -TaskName "{{ task_name }}" -ErrorAction Stop
+            $taskInfo = Get-ScheduledTaskInfo -TaskName "AtualizarComPS7" -ErrorAction Stop
             $status = $taskInfo.State
             Write-Host "Status da tarefa: $status"
             if ($status -eq "Ready") {
@@ -38,7 +38,6 @@
           Start-Sleep -Seconds 30
           $counter++
         } while ($counter -lt $maxWait)
-      '
       args:
         executable: powershell.exe
 
