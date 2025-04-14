@@ -10,7 +10,6 @@
             - CriticalUpdates
             - UpdateRollups
             - Updates
-            - DefinitionUpdates
           state: searched  # Somente busca, não instala
       register: updates_disponiveis
 
