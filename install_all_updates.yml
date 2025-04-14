@@ -18,13 +18,8 @@
       win_shell: |
         Start-ScheduledTask -TaskName "{{ task_name }}"
 
-    - name: Aguardar a conclusão da tarefa (até 30 minutos)
-      win_shell: '
-        do {
-          Start-Sleep -Seconds 30
-          $status = (Get-ScheduledTaskInfo -TaskName "AtualizarComPS7").State
-        } while ($status -ne "Ready")
-      '
+    - name: Aguardar a conclusão da tarefa agendada (versão simplificada)
+      win_shell: 'do { Start-Sleep -Seconds 30; $s = (Get-ScheduledTaskInfo -TaskName "AtualizarComPS7").State } while ($s -ne "Ready")'
       args:
         executable: powershell.exe
 
