@@ -10,12 +10,6 @@
         start_mode: auto
         state: started
 
-    - name: Iniciar o serviço de Agendador de Tarefas
-      win_service:
-        name: Schedule
-        start_mode: auto
-        state: started
-
     - name: Garantir que scripts podem ser executados remotamente
       win_shell: Set-ExecutionPolicy RemoteSigned -Force
 
