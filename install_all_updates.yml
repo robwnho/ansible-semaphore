@@ -1,6 +1,6 @@
 ---
-- name: Preparar e instalar atualizações no Windows com reboot automático
-  hosts: all
+- name: Atualizar Windows com PowerShell diretamente
+  hosts: windows
   gather_facts: no
   tasks:
 
@@ -9,38 +9,14 @@
         name: wuauserv
         start_mode: auto
         state: started
-      
-    - name: Iniciar instalação de todas as atualizações (sem filtro)
-      win_updates:
-        category_names: []
-        reboot: yes
-      register: install_job
 
-    - name: Aguardar término da instalação de atualizações
-      async_status:
-        jid: "{{ install_job.ansible_job_id }}"
-      register: job_result
-      until: job_result.finished
-      retries: 60
-      delay: 60
+    - name: Forçar busca e instalação de atualizações
+      win_shell: |
+        Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot -IgnoreReboot
+      args:
+        executable: powershell.exe
+      register: resultado_atualizacao
 
-    - name: Exibir resumo das atualizações aplicadas
+    - name: Mostrar saída do comando PowerShell
       debug:
-        msg: |
-          {% if job_result.result.installed_update_count > 0 %}
-          Atualizações instaladas: {{ job_result.result.installed_update_count }}
-          {% for update in job_result.result.updates %}
-          - {{ update.title }}
-          {% endfor %}
-          {% else %}
-          Nenhuma atualização foi instalada.
-          {% endif %}
-
-    - name: Verificar se foi necessário reiniciar
-      debug:
-        msg: >
-          {% if job_result.result.reboot_required %}
-          Reinício foi necessário (realizado automaticamente).
-          {% else %}
-          Nenhum reinício foi necessário.
-          {% endif %}
+        var: resultado_atualizacao.stdout_lines
