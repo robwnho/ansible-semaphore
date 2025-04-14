@@ -1,44 +1,46 @@
 ---
-- name: Instalar PowerShell 7 e aplicar todas as atualizações pendentes no Windows
+- name: Instalar PowerShell 7 (portátil) e aplicar atualizações no Windows
   hosts: all
   gather_facts: no
   tasks:
 
-    - name: Iniciar o serviço do Windows Update
+    - name: Garantir que o serviço do Windows Update está ativo
       win_service:
         name: wuauserv
         start_mode: auto
         state: started
 
-    - name: Baixar e instalar PowerShell 7
-      win_shell: |
-        Invoke-WebRequest -Uri "https://github.com/PowerShell/PowerShell/releases/latest/download/PowerShell-7.4.1-win-x64.msi" -OutFile "$env:TEMP\pwsh.msi"
-        Start-Process msiexec.exe -ArgumentList '/i', "$env:TEMP\pwsh.msi", '/quiet', '/norestart' -Wait
-      args:
-        executable: powershell.exe
+    - name: Criar diretório de destino para o PowerShell 7
+      win_file:
+        path: 'C:\PowerShell7'
+        state: directory
 
-    - name: Verificar se PowerShell 7 foi instalado
-      win_stat:
-        path: 'C:\Program Files\PowerShell\7\pwsh.exe'
-      register: pwsh7_path
+    - name: Baixar PowerShell 7.4.1 ZIP portátil
+      win_get_url:
+        url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.zip"
+        dest: "C:\\Temp\\PowerShell7.zip"
 
-    - name: Instalar PSWindowsUpdate com PowerShell 7
+    - name: Descompactar PowerShell 7 em C:\PowerShell7
+      win_unzip:
+        src: "C:\\Temp\\PowerShell7.zip"
+        dest: "C:\\PowerShell7"
+        creates: "C:\\PowerShell7\\pwsh.exe"
+
+    - name: Instalar PSWindowsUpdate no PowerShell 7
       win_shell: |
-        & "C:\Program Files\PowerShell\7\pwsh.exe" -Command "
+        C:\PowerShell7\pwsh.exe -Command "
           Install-PackageProvider -Name NuGet -Force;
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
           Install-Module -Name PSWindowsUpdate -Force
         "
-      when: pwsh7_path.stat.exists
 
-    - name: Executar atualizações com PowerShell 7
+    - name: Executar atualizações do Windows com PowerShell 7
       win_shell: |
-        & "C:\Program Files\PowerShell\7\pwsh.exe" -Command "
+        C:\PowerShell7\pwsh.exe -Command "
           Import-Module PSWindowsUpdate;
           Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
         "
-      when: pwsh7_path.stat.exists
 
     - name: Mensagem final
       debug:
-        msg: "Atualizações aplicadas via PowerShell 7. Reinício pode ter sido executado automaticamente."
+        msg: "Atualizações aplicadas com PowerShell 7 portátil. O host pode reiniciar automaticamente."
