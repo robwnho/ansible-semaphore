@@ -1,46 +1,76 @@
 ---
-- name: Instalar PowerShell 7 (portátil) e aplicar atualizações no Windows
+- name: Instalar PowerShell 7 (ZIP) e agendar atualização com Task Scheduler
   hosts: all
   gather_facts: no
+  vars:
+    task_name: "AtualizarComPS7"
+    pwsh_zip_url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.zip"
+    pwsh_dest_dir: "C:\\PowerShell7"
+    pwsh_exe: "C:\\PowerShell7\\pwsh.exe"
+    pwsh_zip_path: "C:\\Temp\\PowerShell7.zip"
+    task_script: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose"
+
   tasks:
 
-    - name: Garantir que o serviço do Windows Update está ativo
-      win_service:
-        name: wuauserv
-        start_mode: auto
-        state: started
-
-    - name: Criar diretório de destino para o PowerShell 7
+    - name: Criar diretório para PowerShell 7
       win_file:
-        path: 'C:\PowerShell7'
+        path: "{{ pwsh_dest_dir }}"
         state: directory
 
-    - name: Baixar PowerShell 7.4.1 ZIP portátil
+    - name: Baixar PowerShell 7 portátil (.zip)
       win_get_url:
-        url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.zip"
-        dest: "C:\\Temp\\PowerShell7.zip"
+        url: "{{ pwsh_zip_url }}"
+        dest: "{{ pwsh_zip_path }}"
 
-    - name: Descompactar PowerShell 7 em C:\PowerShell7
+    - name: Descompactar PowerShell 7
       win_unzip:
-        src: "C:\\Temp\\PowerShell7.zip"
-        dest: "C:\\PowerShell7"
-        creates: "C:\\PowerShell7\\pwsh.exe"
+        src: "{{ pwsh_zip_path }}"
+        dest: "{{ pwsh_dest_dir }}"
+        creates: "{{ pwsh_exe }}"
 
-    - name: Instalar PSWindowsUpdate no PowerShell 7
-      win_shell: |
-        C:\PowerShell7\pwsh.exe -Command "
-          Install-PackageProvider -Name NuGet -Force;
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
-          Install-Module -Name PSWindowsUpdate -Force
-        "
+    - name: Instalar módulo PSWindowsUpdate via PowerShell 7
+      win_shell: >
+        {{ pwsh_exe }} -Command "
+        Install-PackageProvider -Name NuGet -Force;
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
+        Install-Module -Name PSWindowsUpdate -Force"
+      args:
+        executable: cmd
 
-    - name: Executar atualizações do Windows com PowerShell 7
-      win_shell: |
-        C:\PowerShell7\pwsh.exe -Command "
-          Import-Module PSWindowsUpdate;
-          Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
-        "
+    - name: Criar tarefa agendada para executar atualizações
+      win_scheduled_task:
+        name: "{{ task_name }}"
+        description: "Atualização via PowerShell 7 por Ansible"
+        actions:
+          - path: "{{ pwsh_exe }}"
+            arguments: "-Command {{ task_script }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        run_level: highest
+        state: present
+        enabled: yes
+        hidden: no
+        triggers: []
+        execution_time_limit: PT1H
 
-    - name: Mensagem final
+    - name: Iniciar a tarefa agendada
+      win_scheduled_task:
+        name: "{{ task_name }}"
+        state: started
+
+    - name: Aguardar a conclusão da tarefa (até 30 min)
+      win_scheduled_task_stat:
+        name: "{{ task_name }}"
+      register: task_status
+      until: task_status.task_state == "Ready"
+      retries: 30
+      delay: 60
+
+    - name: Remover a tarefa agendada (opcional)
+      win_scheduled_task:
+        name: "{{ task_name }}"
+        state: absent
+
+    - name: Exibir mensagem final
       debug:
-        msg: "Atualizações aplicadas com PowerShell 7 portátil. O host pode reiniciar automaticamente."
+        msg: "Atualizações executadas via tarefa agendada com PowerShell 7."
