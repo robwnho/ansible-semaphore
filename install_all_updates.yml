@@ -101,14 +101,14 @@
 
     # Etapa 7: Capturar log de atualização
     - name: Ler log da atualização do Windows
-      win_slurp:
-        src: "{{ log_path }}"
-      register: update_log_raw
+      win_shell: |
+        Get-Content -Path "{{ log_path }}" -Raw
+      register: update_log_text
       when: monitor_task is succeeded
-
+    
     - name: Mostrar resultado da atualização
       debug:
-        msg: "{{ update_log_raw['content'] | b64decode }}"
+        msg: "{{ update_log_text.stdout }}"
       when: monitor_task is succeeded
 
     # Etapa 8: Verificar necessidade de reinício
