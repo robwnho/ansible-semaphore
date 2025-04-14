@@ -6,140 +6,107 @@
     task_name: "AtualizarComPS7"
     task_description: "Executa atualizações do Windows via PowerShell 7"
     ps7_download_url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.msi"
-    update_command: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose"
+    update_command: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"
+    temp_dir: "C:\\Temp"
 
   tasks:
-    # Etapa 1: Instalar PowerShell 7 se necessário
-    - name: Verificar se o PowerShell 7 já está instalado
-      win_shell: |
-        $ps7version = (Get-Command pwsh -ErrorAction SilentlyContinue).Version
-        if ($ps7version) {
-          Write-Host "PowerShell $($ps7version.ToString()) já está instalado"
-          exit 0
-        } else {
-          Write-Host "PowerShell 7 não encontrado, será instalado"
-          exit 1
-        }
-      args:
-        executable: powershell.exe
-      register: ps7_check
-      ignore_errors: yes
-
-    - name: Criar diretório temporário se não existir
+    # Etapa 1: Preparar ambiente
+    - name: Criar diretório temporário
       win_file:
-        path: C:\Temp
+        path: "{{ temp_dir }}"
         state: directory
-      when: ps7_check.rc == 1
 
-    - name: Baixar PowerShell 7 (se necessário)
+    # Etapa 2: Instalar PowerShell 7 (abordagem alternativa)
+    - name: Baixar PowerShell 7
       win_get_url:
         url: "{{ ps7_download_url }}"
-        dest: C:\Temp\PowerShell-7.4.1-win-x64.msi
-      when: ps7_check.rc == 1
-      register: download_result
+        dest: "{{ temp_dir }}\\PowerShell-7.4.1-win-x64.msi"
+      register: download_ps7
+      retries: 3
+      delay: 10
+      until: download_ps7 is succeeded
 
-    - name: Instalar PowerShell 7 (se baixado)
-      win_package:
-        path: C:\Temp\PowerShell-7.4.1-win-x64.msi
-        product_id: "{7A2C0B2D-73E5-4BC8-89F2-C2414F8A5F8A}"
-        state: present
-        arguments: /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1
-      when: download_result is defined and download_result.changed
+    - name: Instalar PowerShell 7 (método alternativo)
+      win_shell: |
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"{{ temp_dir }}\\PowerShell-7.4.1-win-x64.msi`" /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1" -Wait
+      args:
+        executable: cmd.exe
+      register: install_ps7
+      ignore_errors: yes
 
-    # Etapa 2: Instalar módulo PSWindowsUpdate
+    - name: Verificar instalação do PowerShell 7
+      win_shell: pwsh -Command "exit 0"
+      register: ps7_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Falha se o PowerShell 7 não estiver instalado
+      fail:
+        msg: "Falha na instalação do PowerShell 7. Verifique manualmente."
+      when: ps7_check is failed
+
+    # Etapa 3: Instalar módulo PSWindowsUpdate
     - name: Instalar módulo PSWindowsUpdate
       win_shell: |
-        Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -AllowClobber
-        Import-Module PSWindowsUpdate -Force
-      args:
-        executable: pwsh.exe
-      register: module_install
+        pwsh -Command "Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -AllowClobber"
+      register: install_module
+      retries: 3
+      delay: 10
       ignore_errors: yes
 
-    # Etapa 3: Criar tarefa agendada
+    # Etapa 4: Criar tarefa agendada
     - name: Criar tarefa agendada para atualizações
       win_shell: |
-        $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument "-NoProfile -Command `"{{ update_command }}`""
-        $trigger = New-ScheduledTaskTrigger -AtStartup
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable
-        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-        
-        Register-ScheduledTask `
-          -TaskName "{{ task_name }}" `
-          -Description "{{ task_description }}" `
-          -Action $action `
-          -Trigger $trigger `
-          -Settings $settings `
-          -Principal $principal `
-          -Force
-      args:
-        executable: pwsh.exe
-      register: task_creation
+        pwsh -Command "
+        $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command `"{{ update_command }}`"'
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+        Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force
+        "
+      register: create_task
 
-    - name: Forçar aplicação da GPO (opcional)
-      win_shell: gpupdate /force
-
-    # Etapa 4: Executar a tarefa imediatamente
+    # Etapa 5: Executar tarefa imediatamente
     - name: Executar tarefa agendada
       win_shell: |
-        Start-ScheduledTask -TaskName "{{ task_name }}"
-      args:
-        executable: pwsh.exe
-      register: task_execution
+        pwsh -Command "Start-ScheduledTask -TaskName '{{ task_name }}'"
+      register: run_task
 
-    # Etapa 5: Monitorar conclusão
+    # Etapa 6: Monitorar execução
     - name: Aguardar conclusão das atualizações
       win_shell: |
-        $maxWait = 180  # 3 horas máximo
+        pwsh -Command "
+        $maxWait = 60
         $counter = 0
         do {
-          $taskInfo = Get-ScheduledTaskInfo -TaskName "{{ task_name }}"
-          $lastResult = $taskInfo.LastTaskResult
-          $status = $taskInfo.State
-          
-          Write-Host "Status: $status | Último resultado: $lastResult"
-          
-          if ($status -eq 'Ready' -and $lastResult -eq 0) {
-            Write-Host "Tarefa concluída com sucesso"
-            exit 0
-          }
-          elseif ($lastResult -ne 0 -and $lastResult -ne 267009) {  # 267009 = em execução
-            Write-Host "Tarefa falhou com código $lastResult"
-            exit $lastResult
-          }
-          
-          Start-Sleep -Seconds 60
+          $taskInfo = Get-ScheduledTaskInfo -TaskName '{{ task_name }}'
+          if ($taskInfo.LastTaskResult -eq 0) { exit 0 }
+          Start-Sleep -Seconds 30
           $counter++
         } while ($counter -lt $maxWait)
-        
-        Write-Host "Tempo máximo de espera excedido"
         exit 1
-      args:
-        executable: pwsh.exe
-      register: task_monitoring
+        "
+      register: monitor_task
       ignore_errors: yes
 
-    # Etapa 6: Reiniciar se necessário
+    # Etapa 7: Verificar necessidade de reinício
     - name: Verificar se reinicialização é necessária
       win_shell: |
-        $rebootRequired = Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
-        if ($rebootRequired) {
-          exit 1
-        } else {
-          exit 0
-        }
-      args:
-        executable: pwsh.exe
-      register: reboot_check
-      ignore_errors: yes
+        pwsh -Command "[bool](Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' -ErrorAction SilentlyContinue)"
+      register: reboot_required
+      changed_when: false
 
-    - name: Reiniciar o sistema se necessário
+    - name: Reiniciar se necessário
       win_reboot:
-        msg: "Atualizações do Windows concluídas. Reiniciando o sistema."
-        connect_timeout: 3600
-        pre_reboot_delay: 60
-      when: reboot_check.rc == 1
+        msg: "Reinicialização necessária após atualizações"
+        connect_timeout: 600
+      when: reboot_required.stdout == "True"
 
-    - name: Mensagem final
+    - name: Relatório final
       debug:
-        msg: "Processo de atualização concluído. {{ 'Reinicialização agendada.' if reboot_check.rc == 1 else 'Não é necessário reiniciar.' }}"
+        msg: |
+          Processo concluído com:
+          - PowerShell 7 instalado: {{ ps7_check is succeeded }}
+          - Módulo PSWindowsUpdate: {{ install_module is succeeded }}
+          - Tarefa agendada criada: {{ create_task is succeeded }}
+          - Atualizações executadas: {{ monitor_task is succeeded }}
+          - Reinicialização necessária: {{ reboot_required.stdout == "True" | ternary('Sim','Não') }}
