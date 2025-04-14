@@ -8,6 +8,8 @@
         category_names: '*'
         reboot: true
       register: update_results
+      ansible_winrm_connection_timeout: 1200 
+      ansible_winrm_kerberos_delegation: true
 
     - name: Show the updates results
       debug:
