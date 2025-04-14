@@ -1,75 +1,37 @@
 ---
-- name: Instalar PowerShell 7 (ZIP) e agendar atualização com Task Scheduler
+- name: Executar atualização via tarefa agendada distribuída por GPO
   hosts: all
   gather_facts: no
   vars:
     task_name: "AtualizarComPS7"
-    pwsh_zip_url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.zip"
-    pwsh_dest_dir: "C:\\PowerShell7"
-    pwsh_exe: "C:\\PowerShell7\\pwsh.exe"
-    pwsh_zip_path: "C:\\Temp\\PowerShell7.zip"
-    task_script: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose"
 
   tasks:
 
-    - name: Criar diretório para PowerShell 7
-      win_file:
-        path: "{{ pwsh_dest_dir }}"
-        state: directory
+    - name: Forçar aplicação da GPO com gpupdate /force
+      win_shell: gpupdate /force
 
-    - name: Baixar PowerShell 7 portátil (.zip)
-      win_get_url:
-        url: "{{ pwsh_zip_url }}"
-        dest: "{{ pwsh_zip_path }}"
+    - name: Esperar 10 segundos para GPO aplicar tarefas agendadas
+      pause:
+        seconds: 10
 
-    - name: Descompactar PowerShell 7
-      win_unzip:
-        src: "{{ pwsh_zip_path }}"
-        dest: "{{ pwsh_dest_dir }}"
-        creates: "{{ pwsh_exe }}"
-
-    - name: Instalar módulo PSWindowsUpdate via PowerShell 7
-      win_shell: >
-        {{ pwsh_exe }} -Command "
-        Install-PackageProvider -Name NuGet -Force;
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
-        Install-Module -Name PSWindowsUpdate -Force"
-      args:
-        executable: cmd
-
-    - name: Criar tarefa agendada para executar atualizações
-      win_scheduled_task:
-        name: "{{ task_name }}"
-        description: "Atualização via PowerShell 7 por Ansible"
-        actions:
-          - path: "{{ pwsh_exe }}"
-            arguments: "-Command {{ task_script }}"
-        username: "{{ ansible_user }}"
-        password: "{{ ansible_password }}"
-        run_level: highest
-        state: present
-        enabled: yes
-        hidden: no
-        triggers: []
-        execution_time_limit: PT1H
-
-    - name: Iniciar a tarefa agendada via PowerShell
+    - name: Iniciar a tarefa agendada de atualização
       win_shell: |
         Start-ScheduledTask -TaskName "{{ task_name }}"
 
-    - name: Aguardar a conclusão da tarefa (até 30 min)
-      win_scheduled_task_stat:
-        name: "{{ task_name }}"
-      register: task_status
-      until: task_status.task_state == "Ready"
-      retries: 30
-      delay: 60
+    - name: Aguardar a conclusão da tarefa (monitorando até 30 minutos)
+      win_shell: |
+        $task = Get-ScheduledTask -TaskName "{{ task_name }}"
+        do {
+          Start-Sleep -Seconds 30
+          $status = (Get-ScheduledTaskInfo -TaskName "{{ task_name }}").State
+        } while ($status -ne "Ready")
+      args:
+        executable: powershell.exe
 
-    - name: Remover a tarefa agendada (opcional)
-      win_scheduled_task:
-        name: "{{ task_name }}"
-        state: absent
+    - name: (Opcional) Reiniciar o host após atualização
+      win_reboot:
+        reboot_timeout: 3600
 
-    - name: Exibir mensagem final
+    - name: Mensagem final
       debug:
-        msg: "Atualizações executadas via tarefa agendada com PowerShell 7."
+        msg: "Atualização executada com sucesso via tarefa agendada."
