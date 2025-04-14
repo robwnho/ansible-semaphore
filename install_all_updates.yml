@@ -1,6 +1,6 @@
 ---
 - name: Instalar PowerShell 7 e aplicar todas as atualizações pendentes no Windows
-  hosts: windows
+  hosts: all
   gather_facts: no
   tasks:
 
