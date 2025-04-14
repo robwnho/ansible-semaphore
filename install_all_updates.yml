@@ -1,5 +1,33 @@
-- name: Install all updates and reboot as many times as needed
-  hosts: all
-  ansible.windows.win_updates:
-    category_names: '*'
-    reboot: true
+---
+- name: Instalar TODAS as atualizações pendentes no Windows e reiniciar se necessário
+  hosts: windows
+  gather_facts: no
+  tasks:
+
+    - name: Instalar todas as atualizações disponíveis (sem filtro)
+      win_updates:
+        category_names: []         # Vazio = todas as categorias
+        reboot: yes                # Reiniciar automaticamente se necessário
+        log_path: C:\Temp\ansible-updates-log.txt
+      register: resultado_update
+
+    - name: Exibir resumo das atualizações instaladas
+      debug:
+        msg: |
+          {% if resultado_update.installed_update_count > 0 %}
+          Atualizações instaladas: {{ resultado_update.installed_update_count }}
+          {% for update in resultado_update.updates %}
+          - {{ update.title }}
+          {% endfor %}
+          {% else %}
+          Nenhuma atualização foi instalada.
+          {% endif %}
+
+    - name: Verificar se reinício foi necessário
+      debug:
+        msg: >
+          {% if resultado_update.reboot_required %}
+          Reinício necessário — foi agendado automaticamente.
+          {% else %}
+          Nenhum reinício necessário.
+          {% endif %}
