@@ -1,12 +1,27 @@
-- name: Search for Updates on Ansible
+---
+- name: Listar TODAS as atualizações pendentes no Windows (inclusive Defender)
   hosts: all
+  gather_facts: no
   tasks:
-    - name: Searching for updates
-      ansible.windows.win_updates:
-        state: searched
-      register: update_results
 
-    - name: Show the updates results
+    - name: Buscar atualizações pendentes (todas as categorias)
+      win_updates:
+        state: searched
+        log_path: C:\Temp\ansible-updates-log.txt
+      register: updates_disponiveis
+
+    - name: Exibir todas as variáveis retornadas para debug
+      debug:
+        var: updates_disponiveis
+
+    - name: Exibir lista formatada de atualizações pendentes
       debug:
         msg: |
-          {{ update_results.updates }}
+          {% if updates_disponiveis.updates is defined and updates_disponiveis.updates|length > 0 %}
+          Atualizações encontradas:
+          {% for update in updates_disponiveis.updates %}
+          - {{ update.title }}
+          {% endfor %}
+          {% else %}
+          Nenhuma atualização pendente encontrada.
+          {% endif %}
