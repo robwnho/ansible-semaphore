@@ -1,22 +1,43 @@
 ---
-- name: Atualizar Windows com PowerShell diretamente
-  hosts: all
+- name: Instalar PowerShell 7 e aplicar todas as atualizações pendentes no Windows
+  hosts: windows
   gather_facts: no
   tasks:
 
-    - name: Iniciar o serviço do Windows Update
+    - name: Garantir que o serviço do Windows Update está iniciado
       win_service:
         name: wuauserv
         start_mode: auto
         state: started
 
-    - name: Forçar busca e instalação de atualizações
+    - name: Baixar e instalar PowerShell 7 (pwsh.exe)
       win_shell: |
-        Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot -IgnoreReboot
+        Invoke-WebRequest -Uri "https://github.com/PowerShell/PowerShell/releases/latest/download/PowerShell-7.4.1-win-x64.msi" -OutFile "$env:TEMP\pwsh.msi"
+        Start-Process msiexec.exe -ArgumentList '/i', "$env:TEMP\pwsh.msi", '/quiet', '/norestart' -Wait
       args:
         executable: powershell.exe
-      register: resultado_atualizacao
 
-    - name: Mostrar saída do comando PowerShell
+    - name: Remover o instalador pwsh.msi após instalação
+      win_file:
+        path: C:\Users\{{ ansible_user }}\AppData\Local\Temp\pwsh.msi
+        state: absent
+      ignore_errors: yes
+
+    - name: Instalar módulo PSWindowsUpdate no PowerShell 7
+      win_shell: |
+        pwsh.exe -Command "
+          Install-PackageProvider -Name NuGet -Force;
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
+          Install-Module -Name PSWindowsUpdate -Force
+        "
+
+    - name: Executar atualizações com PowerShell 7 e reiniciar se necessário
+      win_shell: |
+        pwsh.exe -Command "
+          Import-Module PSWindowsUpdate;
+          Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
+        "
+
+    - name: Mensagem final de status
       debug:
-        var: resultado_atualizacao.stdout_lines
+        msg: "Atualizações aplicadas. O host pode reiniciar automaticamente se necessário."
