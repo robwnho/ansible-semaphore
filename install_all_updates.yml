@@ -8,6 +8,7 @@
     ps7_download_url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.msi"
     update_command: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"
     temp_dir: "C:\\Temp"
+    pwsh_path: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
 
   tasks:
     # Etapa 1: Preparar ambiente
@@ -56,10 +57,11 @@
     - name: Criar script PowerShell para tarefa agendada
       win_copy:
         content: |
-          $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"'
+          $action = New-ScheduledTaskAction -Execute '{{ pwsh_path }}' -Argument '-NoProfile -Command "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"'
           $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
+          $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
           $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-          Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force
+          Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
         dest: "{{ temp_dir }}\\create_update_task.ps1"
 
     - name: Executar script de criação da tarefa
