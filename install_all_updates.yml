@@ -18,8 +18,23 @@
       win_shell: |
         Start-ScheduledTask -TaskName "{{ task_name }}"
 
-    - name: Aguardar a conclusão da tarefa agendada (versão simplificada)
-      win_shell: 'do { Start-Sleep -Seconds 30; $s = (Get-ScheduledTaskInfo -TaskName "AtualizarComPS7").State } while ($s -ne "Ready")'
+    - name: Aguardar a tarefa "AtualizarComPS7" aparecer e finalizar
+      win_shell: '
+        $maxWait = 60
+        $counter = 0
+        do {
+          try {
+            $taskInfo = Get-ScheduledTaskInfo -TaskName "AtualizarComPS7" -ErrorAction Stop
+            $status = $taskInfo.State
+            Write-Host "Status da tarefa: $status"
+            if ($status -eq "Ready") { break }
+          } catch {
+            Write-Host "Tarefa ainda não disponível. Aguardando..."
+          }
+          Start-Sleep -Seconds 30
+          $counter++
+        } while ($counter -lt $maxWait)
+      '
       args:
         executable: powershell.exe
 
