@@ -12,7 +12,7 @@
       
     - name: Iniciar instalação de todas as atualizações (sem filtro)
       win_updates:
-        category_names: [*]
+        category_names: []
         reboot: yes
       register: install_job
 
