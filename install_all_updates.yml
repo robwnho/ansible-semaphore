@@ -1,6 +1,6 @@
 ---
 - name: Atualizar Windows com PowerShell diretamente
-  hosts: windows
+  hosts: all
   gather_facts: no
   tasks:
 
