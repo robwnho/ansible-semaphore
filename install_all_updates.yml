@@ -4,40 +4,41 @@
   gather_facts: no
   tasks:
 
-    - name: Garantir que o serviço do Windows Update está iniciado
+    - name: Iniciar o serviço do Windows Update
       win_service:
         name: wuauserv
         start_mode: auto
         state: started
 
-    - name: Baixar e instalar PowerShell 7 (pwsh.exe)
+    - name: Baixar e instalar PowerShell 7
       win_shell: |
         Invoke-WebRequest -Uri "https://github.com/PowerShell/PowerShell/releases/latest/download/PowerShell-7.4.1-win-x64.msi" -OutFile "$env:TEMP\pwsh.msi"
         Start-Process msiexec.exe -ArgumentList '/i', "$env:TEMP\pwsh.msi", '/quiet', '/norestart' -Wait
       args:
         executable: powershell.exe
 
-    - name: Remover o instalador pwsh.msi após instalação
-      win_file:
-        path: C:\Users\{{ ansible_user }}\AppData\Local\Temp\pwsh.msi
-        state: absent
-      ignore_errors: yes
+    - name: Verificar se PowerShell 7 foi instalado
+      win_stat:
+        path: 'C:\Program Files\PowerShell\7\pwsh.exe'
+      register: pwsh7_path
 
-    - name: Instalar módulo PSWindowsUpdate no PowerShell 7
+    - name: Instalar PSWindowsUpdate com PowerShell 7
       win_shell: |
-        pwsh.exe -Command "
+        & "C:\Program Files\PowerShell\7\pwsh.exe" -Command "
           Install-PackageProvider -Name NuGet -Force;
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted;
           Install-Module -Name PSWindowsUpdate -Force
         "
+      when: pwsh7_path.stat.exists
 
-    - name: Executar atualizações com PowerShell 7 e reiniciar se necessário
+    - name: Executar atualizações com PowerShell 7
       win_shell: |
-        pwsh.exe -Command "
+        & "C:\Program Files\PowerShell\7\pwsh.exe" -Command "
           Import-Module PSWindowsUpdate;
           Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
         "
+      when: pwsh7_path.stat.exists
 
-    - name: Mensagem final de status
+    - name: Mensagem final
       debug:
-        msg: "Atualizações aplicadas. O host pode reiniciar automaticamente se necessário."
+        msg: "Atualizações aplicadas via PowerShell 7. Reinício pode ter sido executado automaticamente."
