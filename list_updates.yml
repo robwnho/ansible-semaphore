@@ -3,14 +3,15 @@
   gather_facts: no
   tasks:
 
-    - name: Verificar atualizações pendentes
-      win_updates:
-        category_names:
-          - SecurityUpdates
-          - CriticalUpdates
-          - UpdateRollups
-          - Updates
-        state: searched  # Somente busca, não instala
+      - name: Verificar atualizações pendentes
+        win_updates:
+          category_names:
+            - SecurityUpdates
+            - CriticalUpdates
+            - UpdateRollups
+            - Updates
+            - DefinitionUpdates
+          state: searched  # Somente busca, não instala
       register: updates_disponiveis
 
     - name: Exibir lista de atualizações pendentes
