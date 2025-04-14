@@ -18,7 +18,7 @@
       win_shell: |
         Start-ScheduledTask -TaskName "{{ task_name }}"
 
-    - name: Aguardar a tarefa "AtualizarComPS7" aparecer e finalizar
+    - name: Aguardar a conclusão da tarefa AtualizarComPS7 (modo resiliente)
       win_shell: '
         $maxWait = 60
         $counter = 0
@@ -27,7 +27,9 @@
             $taskInfo = Get-ScheduledTaskInfo -TaskName "AtualizarComPS7" -ErrorAction Stop
             $status = $taskInfo.State
             Write-Host "Status da tarefa: $status"
-            if ($status -eq "Ready") { break }
+            if ($status -eq "Ready") {
+              break
+            }
           } catch {
             Write-Host "Tarefa ainda não disponível. Aguardando..."
           }
@@ -37,6 +39,7 @@
       '
       args:
         executable: powershell.exe
+
 
     - name: (Opcional) Reiniciar o host após atualização
       win_reboot:
