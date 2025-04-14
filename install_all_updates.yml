@@ -12,7 +12,8 @@
 
     - name: Garantir que scripts podem ser executados remotamente
       win_shell: Set-ExecutionPolicy RemoteSigned -Force
-
+      ignore_errors: yes
+      
     - name: Iniciar instalação de todas as atualizações (sem filtro)
       win_updates:
         category_names: []
