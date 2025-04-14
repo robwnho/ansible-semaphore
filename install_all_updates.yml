@@ -1,5 +1,5 @@
 ---
-- name: Executar atualização via tarefa agendada distribuída por GPO
+- name: Executar tarefa agendada "AtualizarComPS7" com PowerShell 7 e reiniciar
   hosts: all
   gather_facts: no
   vars:
@@ -7,24 +7,26 @@
 
   tasks:
 
-    - name: Forçar aplicação da GPO com gpupdate /force
+    - name: Forçar aplicação da GPO
       win_shell: gpupdate /force
 
-    - name: Esperar 10 segundos para GPO aplicar tarefas agendadas
+    - name: Aguardar alguns segundos para a tarefa ser criada pela GPO
       pause:
         seconds: 10
 
-    - name: Iniciar a tarefa agendada de atualização
+    - name: Iniciar a tarefa agendada
       win_shell: |
         Start-ScheduledTask -TaskName "{{ task_name }}"
+      args:
+        executable: powershell.exe
 
-    - name: Aguardar a conclusão da tarefa AtualizarComPS7 (modo resiliente)
+    - name: Aguardar a conclusão da tarefa "{{ task_name }}"
       win_shell: '
         $maxWait = 60
         $counter = 0
         do {
           try {
-            $taskInfo = Get-ScheduledTaskInfo -TaskName "AtualizarComPS7" -ErrorAction Stop
+            $taskInfo = Get-ScheduledTaskInfo -TaskName "{{ task_name }}" -ErrorAction Stop
             $status = $taskInfo.State
             Write-Host "Status da tarefa: $status"
             if ($status -eq "Ready") {
@@ -40,11 +42,11 @@
       args:
         executable: powershell.exe
 
-
-    - name: (Opcional) Reiniciar o host após atualização
+    - name: Reiniciar o host após a conclusão da tarefa
       win_reboot:
         reboot_timeout: 3600
+        msg: "Atualizações aplicadas via tarefa agendada. Reiniciando sistema."
 
     - name: Mensagem final
       debug:
-        msg: "Atualização executada com sucesso via tarefa agendada."
+        msg: "Tarefa '{{ task_name }}' executada com sucesso e sistema reiniciado."
