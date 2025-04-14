@@ -28,9 +28,7 @@
 
     - name: Instalar PowerShell 7 (método alternativo)
       win_shell: |
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"{{ temp_dir }}\\PowerShell-7.4.1-win-x64.msi`" /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1" -Wait
-      args:
-        executable: cmd.exe
+        Start-Process -FilePath "msiexec.exe" -ArgumentList '/i "{{ temp_dir }}\\PowerShell-7.4.1-win-x64.msi" /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1' -Wait
       register: install_ps7
       ignore_errors: yes
 
@@ -48,7 +46,7 @@
     # Etapa 3: Instalar módulo PSWindowsUpdate
     - name: Instalar módulo PSWindowsUpdate
       win_shell: |
-        pwsh -Command "Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -AllowClobber"
+        pwsh -Command "Install-Module -Name PSWindowsUpdate -Force -AllowClobber"
       register: install_module
       retries: 3
       delay: 10
@@ -56,12 +54,12 @@
 
     # Etapa 4: Criar tarefa agendada
     - name: Criar tarefa agendada para atualizações
-      win_shell: |
+      win_shell: >
         pwsh -Command "
-        $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command `"{{ update_command }}`"'
-        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-        Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force
+        $action = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -Command ""{{ update_command }}""';
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5);
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable;
+        Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force;
         "
       register: create_task
 
