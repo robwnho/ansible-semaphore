@@ -53,10 +53,9 @@
         triggers: []
         execution_time_limit: PT1H
 
-    - name: Iniciar a tarefa agendada
-      win_scheduled_task:
-        name: "{{ task_name }}"
-        state: started
+    - name: Iniciar a tarefa agendada via PowerShell
+      win_shell: |
+        Start-ScheduledTask -TaskName "{{ task_name }}"
 
     - name: Aguardar a conclusão da tarefa (até 30 min)
       win_scheduled_task_stat:
