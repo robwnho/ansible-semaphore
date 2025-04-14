@@ -9,17 +9,11 @@
         name: wuauserv
         start_mode: auto
         state: started
-
-    - name: Garantir que scripts podem ser executados remotamente
-      win_shell: Set-ExecutionPolicy RemoteSigned -Force
-      ignore_errors: yes
       
     - name: Iniciar instalação de todas as atualizações (sem filtro)
       win_updates:
-        category_names: []
+        category_names: [*]
         reboot: yes
-      async: 3600
-      poll: 0
       register: install_job
 
     - name: Aguardar término da instalação de atualizações
