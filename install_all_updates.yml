@@ -78,19 +78,20 @@
     # Etapa 6: Monitorar execução
     - name: Aguardar conclusão das atualizações
       win_shell: |
-        pwsh -Command "
-        $maxWait = 60
-        $counter = 0
-        do {
-          $taskInfo = Get-ScheduledTaskInfo -TaskName '{{ task_name }}'
-          if ($taskInfo.LastTaskResult -eq 0) { exit 0 }
-          Start-Sleep -Seconds 30
-          $counter++
-        } while ($counter -lt $maxWait)
-        exit 1
+        "{{ pwsh_path }}" -Command "
+          $maxWait = 60
+          $counter = 0
+          do {
+            $taskInfo = Get-ScheduledTaskInfo -TaskName '{{ task_name }}'
+            if ($taskInfo.LastTaskResult -eq 0) { exit 0 }
+            Start-Sleep -Seconds 30
+            $counter += 1
+          } while ($counter -lt $maxWait)
+          exit 1
         "
       register: monitor_task
       ignore_errors: yes
+
 
     # Etapa 7: Verificar necessidade de reinício
     - name: Verificar se reinicialização é necessária
