@@ -7,6 +7,7 @@
         state: installed
         category_names: '*'
         reboot: true
+      timeout: 1500
       register: update_results
 
     - name: Show the updates results
