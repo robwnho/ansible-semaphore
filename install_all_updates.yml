@@ -8,6 +8,7 @@
     ps7_download_url: "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/PowerShell-7.4.1-win-x64.msi"
     update_command: "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"
     temp_dir: "C:\\Temp"
+    log_path: "C:\\Temp\\update-log.txt"
     pwsh_path: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
 
   tasks:
@@ -54,13 +55,14 @@
       delay: 10
       ignore_errors: yes
 
-    # Etapa 4: Criar tarefa agendada
+    # Etapa 4: Criar tarefa agendada com log
     - name: Criar script PowerShell para tarefa agendada
       win_copy:
         content: |
-          $action = New-ScheduledTaskAction -Execute '{{ pwsh_path }}' -Argument '-NoProfile -Command "Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot"'
-          $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
-          $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+          $logPath = '{{ log_path }}'
+          $action = New-ScheduledTaskAction -Execute '{{ pwsh_path }}' -Argument "-NoProfile -Command `"Import-Module PSWindowsUpdate; Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -Verbose -IgnoreReboot *>&1 | Out-File -FilePath '$logPath' -Encoding utf8`""
+          $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1)
+          $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
           $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
           Register-ScheduledTask -TaskName '{{ task_name }}' -Description '{{ task_description }}' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
         dest: "{{ temp_dir }}\\create_update_task.ps1"
@@ -97,7 +99,19 @@
       register: monitor_task
       ignore_errors: yes
 
-    # Etapa 7: Verificar necessidade de reinício
+    # Etapa 7: Capturar log de atualização
+    - name: Ler log da atualização do Windows
+      win_slurp:
+        src: "{{ log_path }}"
+      register: update_log_raw
+      when: monitor_task is succeeded
+
+    - name: Mostrar resultado da atualização
+      debug:
+        msg: "{{ update_log_raw['content'] | b64decode }}"
+      when: monitor_task is succeeded
+
+    # Etapa 8: Verificar necessidade de reinício
     - name: Verificar se reinicialização é necessária
       win_shell: |
         & "{{ pwsh_path }}" -Command "[bool](Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' -ErrorAction SilentlyContinue)"
@@ -110,7 +124,7 @@
         connect_timeout: 600
       when: reboot_required.stdout == "True"
 
-    # Etapa 8: Relatório final
+    # Etapa 9: Relatório final
     - name: Relatório final
       debug:
         msg: |
