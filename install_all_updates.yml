@@ -9,6 +9,7 @@
         reboot: true
         reject_list:
           - 'Lexmark'
+          - 'HP'
       register: update_results
 
     - name: Show the updates results
