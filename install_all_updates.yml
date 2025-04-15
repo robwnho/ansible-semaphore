@@ -1,12 +1,14 @@
-- name: Install all available Windows Updates
+- name: Install all available Windows Updates (excluding Lexmark)
   hosts: all
   gather_facts: yes
   tasks:
-    - name: Install all updates
+    - name: Install all updates except those containing "Lexmark"
       ansible.windows.win_updates:
         state: installed
         category_names: '*'
         reboot: true
+        reject_list:
+          - 'Lexmark'
       register: update_results
 
     - name: Show the updates results
