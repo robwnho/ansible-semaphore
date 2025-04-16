@@ -1,20 +1,19 @@
 - name: Testar become com Ansible
   hosts: all
   gather_facts: no
-  become: yes   # ativa privilégio de root
-  become_method: su  # opcional - use se estiver funcionando melhor que sudo
-  # become_user: root  # opcional - padrão já é root
+  become: yes
+  become_method: su
 
   tasks:
-    - name: Mostrar o usuário atual (esperado: root)
+    - name: Mostrar o usuario atual (esperado: root)
       command: whoami
       register: resultado
 
-    - name: Exibir resultado
+    - name: Exibir resultado do whoami
       debug:
         var: resultado.stdout
 
-    - name: Criar diretório de teste em /opt
+    - name: Criar diretorio de teste em /opt
       file:
         path: /opt/teste_ansible
         state: directory
@@ -23,7 +22,7 @@
     - name: Criar um arquivo de teste como root
       copy:
         dest: /opt/teste_ansible/ok.txt
-        content: "Teste realizado com sucesso via Ansible e become!"
+        content: "Teste realizado com sucesso via Ansible e become"
         owner: root
         group: root
         mode: '0644'
