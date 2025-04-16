@@ -1,8 +1,14 @@
 - name: Teste de sudo no playbook
+  hosts: local
   become: yes
-  command: whoami
-  register: resultado_sudo
+  gather_facts: no
 
-- name: Exibir resultado do sudo
-  debug:
-    var: resultado_sudo
+  tasks:
+    - name: Executar whoami com sudo
+      become: yes
+      command: whoami
+      register: resultado_sudo
+
+    - name: Exibir resultado do sudo
+      debug:
+        var: resultado_sudo
