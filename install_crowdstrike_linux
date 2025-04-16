@@ -1,0 +1,52 @@
+---
+- name: Corrigir repositórios inválidos antes da instalação
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Comentar entradas 'cdrom' no sources.list
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '^(?!#)(.*cdrom.*)'
+        replace: '# \1'
+
+    - name: Atualizar cache do APT
+      ansible.builtin.apt:
+        update_cache: yes
+
+- name: Instalar CrowdStrike Falcon Sensor (.deb)
+  hosts: servidores,local
+  become: yes
+  tasks:
+
+    - name: Baixar pacote Falcon Sensor (.deb)
+      ansible.builtin.get_url:
+        url: https://downloads.arklok.com.br/falcon-sensor_7.23.0-17607_amd64.deb
+        dest: /tmp/falcon-sensor.deb
+        validate_certs: no
+
+    - name: Instalar Falcon Sensor
+      ansible.builtin.apt:
+        deb: /tmp/falcon-sensor.deb
+        update_cache: yes
+
+    - name: Configurar CID (forçando sobreposição)
+      ansible.builtin.command: /opt/CrowdStrike/falconctl -s --cid=408692F328D548F8A2E94C71D942CDB1-97 --provisioning-token=0CE896D6 -f
+
+    - name: Habilitar falcon-sensor no boot
+      ansible.builtin.systemd:
+        name: falcon-sensor
+        enabled: yes
+
+    - name: Iniciar o falcon-sensor
+      ansible.builtin.systemd:
+        name: falcon-sensor
+        state: started
+
+    - name: Verificar CID configurado
+      ansible.builtin.command: /opt/CrowdStrike/falconctl -g --cid
+      register: cid_output
+
+    - name: Mostrar CID
+      ansible.builtin.debug:
+        var: cid_output.stdout
