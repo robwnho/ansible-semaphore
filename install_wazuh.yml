@@ -1,5 +1,5 @@
 - name: Instalação do Wazuh Agent 4.11.2
-  hosts: local
+  hosts: linux
   become: yes
   become_method: su
   gather_facts: no
