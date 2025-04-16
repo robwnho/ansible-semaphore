@@ -1,0 +1,32 @@
+---
+- name: Instalar CrowdStrike Falcon Sensor em máquinas Windows
+  hosts: windows
+  gather_facts: no
+  tasks:
+
+    - name: Criar diretório temporário para o instalador
+      win_file:
+        path: 'C:\Temp\CrowdStrike'
+        state: directory
+
+    - name: Baixar o instalador do CrowdStrike
+      win_get_url:
+        url: https://downloads.arklok.com.br/FalconSensor_Windows.exe
+        dest: 'C:\Temp\CrowdStrike\FalconSensor_Windows.exe'
+
+    - name: Instalar o FalconSensor com parâmetros silenciosos
+      win_command: >
+        C:\Temp\CrowdStrike\FalconSensor_Windows.exe /install /quiet /norestart CID=408692F328D548F8A2E94C71D942CDB1-97 ProvToken=0CE896D6
+      args:
+        chdir: 'C:\Temp\CrowdStrike'
+
+    - name: Verificar se o serviço do CrowdStrike foi instalado
+      win_service:
+        name: csagent
+        state: started
+      register: cs_service_status
+      ignore_errors: yes
+
+    - name: Exibir status do serviço CrowdStrike
+      debug:
+        msg: "Serviço CrowdStrike status: {{ cs_service_status }}"
