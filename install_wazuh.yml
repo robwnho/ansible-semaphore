@@ -1,7 +1,6 @@
 - name: Teste de sudo no playbook
   hosts: local
   become: yes
-  become_user: root
   gather_facts: no
 
   tasks:
