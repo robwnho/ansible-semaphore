@@ -1,0 +1,31 @@
+---
+- name: Instalar Wazuh Agent em servidores Windows
+  hosts: windows
+  become: no
+  gather_facts: no
+
+  vars:
+    wazuh_installer_url: https://packages.wazuh.com/4.x/windows/wazuh-agent-4.11.2-1.msi
+    wazuh_manager: rqokt6v3p11h.cloud.wazuh.com
+    wazuh_registration_password: shi6U6QzCuA0XSCiqx8LrPpLSIggINvh
+
+  tasks:
+
+    - name: Baixar instalador do Wazuh Agent
+      ansible.windows.win_shell: |
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri "{{ wazuh_installer_url }}" -OutFile "$env:TEMP\wazuh-agent.msi"
+      args:
+        executable: powershell.exe
+
+    - name: Instalar Wazuh Agent em modo silencioso
+      ansible.windows.win_shell: |
+        msiexec.exe /i "$env:TEMP\wazuh-agent.msi" /q WAZUH_MANAGER='{{ wazuh_manager }}' WAZUH_REGISTRATION_PASSWORD='{{ wazuh_registration_password }}'
+      args:
+        executable: powershell.exe
+
+    - name: Iniciar serviço wazuh
+      ansible.windows.win_service:
+        name: wazuh
+        start_mode: auto
+        state: started
