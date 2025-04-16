@@ -1,28 +1,45 @@
-- name: Testar become com Ansible
+---
+- name: Instalar ou atualizar Wazuh Agent
   hosts: all
-  gather_facts: no
   become: yes
-  become_method: su
+
+  vars:
+    wazuh_package_url: "https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.11.2-1_amd64.deb"
+    wazuh_package_name: "wazuh-agent_4.11.2-1_amd64.deb"
+    wazuh_manager_url: "rqokt6v3p11h.cloud.wazuh.com"
+    wazuh_registration_password: "shi6U6QzCuA0XSCiqx8LrPpLSIggINvh"
 
   tasks:
-    - name: Mostrar usuario atual
-      command: whoami
-      register: resultado
-
-    - name: Exibir resultado do whoami
-      debug:
-        var: resultado.stdout
-
-    - name: Criar diretorio de teste em /opt
-      file:
-        path: /opt/teste_ansible
-        state: directory
-        mode: '0755'
-
-    - name: Criar um arquivo de teste
-      copy:
-        dest: /opt/teste_ansible/ok.txt
-        content: "Teste realizado com sucesso via Ansible become"
-        owner: root
-        group: root
+    - name: Baixar pacote do Wazuh Agent
+      ansible.builtin.get_url:
+        url: "{{ wazuh_package_url }}"
+        dest: "/tmp/{{ wazuh_package_name }}"
         mode: '0644'
+        validate_certs: no
+
+    - name: Instalar o Wazuh Agent com variáveis de ambiente
+      ansible.builtin.shell: |
+        WAZUH_MANAGER='{{ wazuh_manager_url }}' \
+        WAZUH_REGISTRATION_PASSWORD='{{ wazuh_registration_password }}' \
+        dpkg -i /tmp/{{ wazuh_package_name }}
+      args:
+        executable: /bin/bash
+
+    - name: Habilitar o Wazuh Agent no boot
+      ansible.builtin.systemd:
+        name: wazuh-agent
+        enabled: yes
+
+    - name: Iniciar o Wazuh Agent
+      ansible.builtin.systemd:
+        name: wazuh-agent
+        state: started
+
+    - name: Validar status do wazuh-agent
+      ansible.builtin.systemd:
+        name: wazuh-agent
+      register: wazuh_status
+
+    - name: Mostrar status
+      debug:
+        var: wazuh_status.status.ActiveState
