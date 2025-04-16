@@ -1,30 +1,29 @@
-- name: Instalação do Wazuh Agent 4.11.2
-  hosts: linux
-  become: yes
-  become_method: su
+- name: Testar become com Ansible
+  hosts: all
   gather_facts: no
-
-  vars:
-    wazuh_deb_url: "https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.11.2-1_amd64.deb"
-    wazuh_deb_file: "/tmp/wazuh-agent_4.11.2-1_amd64.deb"
-    wazuh_manager: "rqokt6v3p11h.cloud.wazuh.com"
-    wazuh_password: "shi6U6QzCuA0XSCiqx8LrPpLSIggINvh"
+  become: yes   # ativa privilégio de root
+  become_method: su  # opcional - use se estiver funcionando melhor que sudo
+  # become_user: root  # opcional - padrão já é root
 
   tasks:
-    - name: Baixar pacote .deb do Wazuh Agent
-      get_url:
-        url: "{{ wazuh_deb_url }}"
-        dest: "{{ wazuh_deb_file }}"
+    - name: Mostrar o usuário atual (esperado: root)
+      command: whoami
+      register: resultado
+
+    - name: Exibir resultado
+      debug:
+        var: resultado.stdout
+
+    - name: Criar diretório de teste em /opt
+      file:
+        path: /opt/teste_ansible
+        state: directory
+        mode: '0755'
+
+    - name: Criar um arquivo de teste como root
+      copy:
+        dest: /opt/teste_ansible/ok.txt
+        content: "Teste realizado com sucesso via Ansible e become!"
+        owner: root
+        group: root
         mode: '0644'
-
-    - name: Instalar pacote Wazuh Agent
-      shell: >
-        WAZUH_MANAGER='{{ wazuh_manager }}'
-        WAZUH_REGISTRATION_PASSWORD='{{ wazuh_password }}'
-        dpkg -i {{ wazuh_deb_file }}
-
-    - name: Ativar e iniciar o serviço wazuh-agent
-      systemd:
-        name: wazuh-agent
-        enabled: yes
-        state: started
