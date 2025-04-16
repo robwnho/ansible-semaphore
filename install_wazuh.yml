@@ -5,7 +5,7 @@
   become_method: su
 
   tasks:
-    - name: Mostrar o usuario atual (esperado: root)
+    - name: Mostrar usuario atual
       command: whoami
       register: resultado
 
@@ -19,10 +19,10 @@
         state: directory
         mode: '0755'
 
-    - name: Criar um arquivo de teste como root
+    - name: Criar um arquivo de teste
       copy:
         dest: /opt/teste_ansible/ok.txt
-        content: "Teste realizado com sucesso via Ansible e become"
+        content: "Teste realizado com sucesso via Ansible become"
         owner: root
         group: root
         mode: '0644'
