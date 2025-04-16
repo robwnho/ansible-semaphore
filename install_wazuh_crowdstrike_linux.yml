@@ -1,0 +1,22 @@
+---
+- name: Instalação do Wazuh Agent 4.11.2
+  hosts: local
+  become: yes
+  vars:
+    wazuh_deb_url: "https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.11.2-1_amd64.deb"
+    wazuh_deb_file: "/tmp/wazuh-agent_4.11.2-1_amd64.deb"
+    wazuh_manager: "rqokt6v3p11h.cloud.wazuh.com"
+    wazuh_password: "shi6U6QzCuA0XSCiqx8LrPpLSIggINvh"
+
+  tasks:
+    - name: Baixar pacote .deb do Wazuh Agent
+      get_url:
+        url: "{{ wazuh_deb_url }}"
+        dest: "{{ wazuh_deb_file }}"
+        mode: '0644'
+
+    - name: Instalar pacote Wazuh Agent
+      command: >
+        WAZUH_MANAGER='{{ wazuh_manager }}'
+        WAZUH_REGISTRATION_PASSWORD='{{ wazuh_password }}'
+        dpkg -i {{ wazuh_deb_file }}
