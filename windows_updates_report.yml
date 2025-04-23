@@ -45,7 +45,7 @@
       delegate_to: localhost
 
     - name: Executar script Python para gerar PDF consolidado
-      command: ../../venv/bin/python /home/administrator/ansible_vars/gerar_pdf_atualizacoes.py
+      command: /home/administrator/ansible_vars/venv/bin/python /home/administrator/ansible_vars/gerar_pdf_atualizacoes.py
       delegate_to: localhost
       run_once: true
 
