@@ -19,7 +19,7 @@
 
     - name: Criar diretório local para relatórios
       ansible.builtin.file:
-        path: /home/administrator/ansible_vars/playbooks/windows/reports/home/administrator/ansible_vars/playbooks/windows/reports
+        path: /home/administrator/ansible_vars/playbooks/windows/reports
         state: directory
       delegate_to: localhost
       run_once: true
@@ -33,7 +33,7 @@
 
     - name: Recriar diretório para relatórios
       ansible.builtin.file:
-        path: ./reports
+        path: /home/administrator/ansible_vars/playbooks/windows/reports
         state: directory
       delegate_to: localhost
       run_once: true
