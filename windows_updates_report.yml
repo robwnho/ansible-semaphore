@@ -45,7 +45,7 @@
       delegate_to: localhost
 
     - name: Executar script Python para gerar PDF consolidado
-      command: /home/administrator/ansible_vars/venv/bin/python /home/administrator/ansible_vars/gerar_pdf_atualizacoes.py
+      command: /home/administrator/ansible_vars/venv/bin/python ./gerar_pdf_atualizacoes.py
       delegate_to: localhost
       run_once: true
 
@@ -60,6 +60,6 @@
         subject: "Relatório de Atualizações Pendentes - {{ ansible_date_time.date }}"
         body: "Segue em anexo o relatório consolidado das atualizações pendentes dos servidores Windows."
         attach:
-          - /home/administrator/ansible_vars/playbooks/windows/reports/consolidado_atualizacoes.pdf
+          - ./reports/consolidado_atualizacoes.pdf
       delegate_to: localhost
       run_once: true
