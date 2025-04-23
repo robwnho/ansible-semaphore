@@ -3,7 +3,7 @@
   hosts: all
   gather_facts: yes
   vars:
-    email_recipient: roberth.paiva@arklok.com.br, rodrigo.marques@arklok.com.br, david.oliveira@arklok.com.br, wemerson.silva@arklok.com.br, alvaro.alves@arklok.com.br, darlan.delmondes@arklok.com.br
+    email_recipient: roberth.paiva@arklok.com.br
 
   tasks:
     - name: Obter lista de atualizações pendentes
