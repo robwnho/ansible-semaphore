@@ -1,0 +1,65 @@
+---
+- name: Verificar atualizações pendentes em servidores Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    email_recipient: roberth.paiva@arklok.com.br, rodrigo.marques@arklok.com.br, david.oliveira@arklok.com.br, wemerson.silva@arklok.com.br, alvaro.alves@arklok.com.br, darlan.delmondes@arklok.com.br
+
+  tasks:
+    - name: Obter lista de atualizações pendentes
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+          - UpdateRollups
+          - Updates
+          - DefinitionUpdates
+        state: searched
+      register: windows_updates
+
+    - name: Criar diretório local para relatórios
+      ansible.builtin.file:
+        path: ./reports
+        state: directory
+      delegate_to: localhost
+      run_once: true
+
+    - name: Limpar arquivos antigos da pasta reports
+      ansible.builtin.file:
+        path: ./reports
+        state: absent
+      delegate_to: localhost
+      run_once: true
+
+    - name: Recriar diretório para relatórios
+      ansible.builtin.file:
+        path: ./reports
+        state: directory
+      delegate_to: localhost
+      run_once: true
+
+    - name: Salvar dados de atualizações em JSON
+      copy:
+        content: "{{ windows_updates | to_nice_json }}"
+        dest: "./reports/{{ inventory_hostname }}_updates.json"
+      delegate_to: localhost
+
+    - name: Executar script Python para gerar PDF consolidado
+      command: ../../venv/bin/python /home/administrator/ansible_vars/gerar_pdf_atualizacoes.py
+      delegate_to: localhost
+      run_once: true
+
+    - name: Enviar e-mail com o PDF
+      community.general.mail:
+        host: smtp.office365.com
+        port: 25
+        username: ansible@arklok.com.br
+        password: "l_$[z~[A;E1/FW"
+        from: ansible@arklok.com.br
+        to: "{{ email_recipient }}"
+        subject: "Relatório de Atualizações Pendentes - {{ ansible_date_time.date }}"
+        body: "Segue em anexo o relatório consolidado das atualizações pendentes dos servidores Windows."
+        attach:
+          - /home/administrator/ansible_vars/playbooks/windows/reports/consolidado_atualizacoes.pdf
+      delegate_to: localhost
+      run_once: true
