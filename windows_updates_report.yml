@@ -19,14 +19,14 @@
 
     - name: Criar diretório local para relatórios
       ansible.builtin.file:
-        path: ./reports
+        path: /home/administrator/ansible_vars/playbooks/windows/reports/home/administrator/ansible_vars/playbooks/windows/reports
         state: directory
       delegate_to: localhost
       run_once: true
 
     - name: Limpar arquivos antigos da pasta reports
       ansible.builtin.file:
-        path: ./reports
+        path: /home/administrator/ansible_vars/playbooks/windows/reports
         state: absent
       delegate_to: localhost
       run_once: true
@@ -41,7 +41,7 @@
     - name: Salvar dados de atualizações em JSON
       copy:
         content: "{{ windows_updates | to_nice_json }}"
-        dest: "./reports/{{ inventory_hostname }}_updates.json"
+        dest: "/home/administrator/ansible_vars/playbooks/windows/reports/{{ inventory_hostname }}_updates.json"
       delegate_to: localhost
 
     - name: Executar script Python para gerar PDF consolidado
