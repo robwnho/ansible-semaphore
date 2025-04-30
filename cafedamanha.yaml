@@ -1,0 +1,18 @@
+---
+- name: Criar pasta e arquivo de café da manhã no Windows
+  hosts: windows
+  gather_facts: false
+  vars:
+    temp_path: C:\temp
+    arquivo: cafe_da_manha.txt
+
+  tasks:
+    - name: Assegura que a pasta {{ temp_path }} exista
+      ansible.windows.win_file:
+        path: "{{ temp_path }}"
+        state: directory
+
+    - name: Cria o arquivo {{ arquivo }} em {{ temp_path }}
+      ansible.windows.win_file:
+        path: "{{ temp_path }}\{{ arquivo }}"
+        state: touch
