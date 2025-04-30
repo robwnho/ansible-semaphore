@@ -1,0 +1,12 @@
+---
+- name: Remover o arquivo de café da manhã no Windows
+  hosts: windows
+  gather_facts: false
+  vars:
+    caminho_arquivo: C:/temp/cafe_da_manha.txt
+
+  tasks:
+    - name: Remove o arquivo {{ caminho_arquivo }} se existir
+      ansible.windows.win_file:
+        path: "{{ caminho_arquivo }}"
+        state: absent
