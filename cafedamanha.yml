@@ -3,7 +3,7 @@
   hosts: windows
   gather_facts: false
   vars:
-    temp_path: C:\temp
+    temp_path: C:/temp
     arquivo: cafe_da_manha.txt
 
   tasks:
@@ -12,7 +12,7 @@
         path: "{{ temp_path }}"
         state: directory
 
-    - name: Cria o arquivo {{ arquivo }} em {{ temp_path }}
+    - name: Cria (ou atualiza) o arquivo {{ arquivo }} em {{ temp_path }}
       ansible.windows.win_file:
-        path: "{{ temp_path }}\{{ arquivo }}"
+        path: "{{ temp_path }}/{{ arquivo }}"
         state: touch
