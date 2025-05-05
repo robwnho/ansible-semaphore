@@ -4,20 +4,20 @@
   become: yes
   tasks:
 
-    - name: Exporta variável de ambiente CLOUDAMIZE_CUSTOMER_KEY
+    - name: Baixa o script de instalação do Cloudamize Agent
+      ansible.builtin.get_url:
+        url: "https://am.cloudamize.com/cxf/downloadFileV3?custkey=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef&filename=installCloudamizeAgentV2.sh"
+        dest: /tmp/installCloudamizeAgentV2.sh
+        mode: '0755'
+
+    - name: Executa o script de instalação com a variável customer key
       ansible.builtin.shell: |
-        echo 'export CLOUDAMIZE_CUSTOMER_KEY=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef' >> /etc/profile.d/cloudamize.sh
-        source /etc/profile.d/cloudamize.sh
+        CLOUDAMIZE_CUSTOMER_KEY=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef \
+        sh /tmp/installCloudamizeAgentV2.sh
       args:
         executable: /bin/bash
 
-    - name: Executa script de instalação do Cloudamize Agent via curl e shell
-      ansible.builtin.shell: |
-        sh <(curl -L 'https://am.cloudamize.com/cxf/downloadFileV3?custkey=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef&filename=installCloudamizeAgentV2.sh')
-      args:
-        executable: /bin/bash
-
-    - name: Faz o download do arquivo .hash (opcional para verificação)
+    - name: (Opcional) Baixa o arquivo de hash para verificação
       ansible.builtin.get_url:
         url: "https://am.cloudamize.com/cxf/downloadFileV3?custkey=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef&filename=installCloudamizeAgentV2.sh.hash"
         dest: /tmp/installCloudamizeAgentV2.sh.hash
