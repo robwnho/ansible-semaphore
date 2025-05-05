@@ -20,3 +20,4 @@
         path: C:\temp\cloudamizeAgent.msi
         arguments: 'customerkey=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef /qn'
         state: present
+      ignore_errors: yes
