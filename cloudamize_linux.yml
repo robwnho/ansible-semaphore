@@ -21,3 +21,4 @@
       ansible.builtin.get_url:
         url: "https://am.cloudamize.com/cxf/downloadFileV3?custkey=36ac2c88dcd15731685cbf254001fc04dd4584bdc6fbd2501e864f7d525632ef&filename=installCloudamizeAgentV2.sh.hash"
         dest: /tmp/installCloudamizeAgentV2.sh.hash
+      ignore_errors: yes
