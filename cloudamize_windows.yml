@@ -13,6 +13,7 @@
       win_get_url:
         url: https://downloads.arklok.com.br/cloudamizeAgent.msi
         dest: C:\temp\cloudamizeAgent.msi
+      ignore_errors: yes
 
     - name: Instala o Cloudamize Agent silenciosamente com chave do cliente
       win_package:
