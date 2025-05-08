@@ -14,7 +14,7 @@
 
   tasks:
 
-    - name: Definir URL do pacote zabbix-release conforme versão
+    - name: Determinar URL do pacote zabbix-release conforme versão
       set_fact:
         zabbix_release_url: >-
           {% set v = ansible_facts['distribution_version'] %}
@@ -29,8 +29,6 @@
           {% else %}
             ''
           {% endif %}
-
-
 
     - name: Abortar se versão não suportada
       fail:
@@ -108,14 +106,17 @@
           jsonrpc: "2.0"
           method: "user.login"
           params:
-            username: "{{ zabbix_api_user }}"
+            user: "{{ zabbix_api_user }}"
             password: "{{ zabbix_api_pass }}"
           id: 1
           auth: null
       register: zabbix_auth_response
 
+    - name: Verificar erro de autenticação
+      fail:
+        msg: "Erro ao autenticar na API Zabbix: {{ zabbix_auth_response.json.error }}"
+      when: zabbix_auth_response.json.result is not defined
 
-    
     - name: Buscar o groupid do grupo "{{ zabbix_host_group }}"
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
@@ -130,26 +131,12 @@
             filter:
               name: ["{{ zabbix_host_group }}"]
           auth: "{{ zabbix_auth_response.json.result }}"
-          id: 3
+          id: 2
       register: zabbix_group_response
-
-    - name: Definir groupid
-      set_fact:
-        zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid }}"
-
-
-
-
-    - name: Verificar erro de autenticação
-      fail:
-        msg: "Erro ao autenticar na API Zabbix: {{ zabbix_auth_response.json.error }}"
-      when: zabbix_auth_response.json.result is not defined
 
     - name: Definir groupid como número
       set_fact:
         zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
-
-
 
     - name: Criar host via chamada direta à API Zabbix
       uri:
@@ -175,13 +162,17 @@
                 }
               ],
               "groups": [
-                { "groupid": {{ zabbix_groupid | int }} }
+                { "groupid": {{ zabbix_groupid }} }
               ],
               "templates": [
                 { "name": "{{ zabbix_template_name }}" }
               ]
             },
             "auth": "{{ zabbix_auth_response.json.result }}",
-            "id": 2
+            "id": 3
           }
       register: zabbix_create_result
+
+    - name: Mostrar resposta da criação do host
+      debug:
+        var: zabbix_create_result.json
