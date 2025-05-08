@@ -1,0 +1,54 @@
+---
+- name: Instalação e configuração do Zabbix Agent
+  hosts: all
+  become: yes
+  vars:
+    zabbix_server_ip: "192.168.200.37"
+
+  tasks:
+
+    - name: Detectar a distribuição Linux
+      ansible.builtin.setup:
+        filter: ansible_distribution
+      register: distro_info
+
+    - name: Instalar o Zabbix Agent no Debian/Ubuntu
+      apt:
+        name: zabbix-agent
+        state: present
+        update_cache: yes
+      when: "'Debian' in distro_info.ansible_facts.ansible_distribution or 'Ubuntu' in distro_info.ansible_facts.ansible_distribution"
+
+    - name: Instalar o Zabbix Agent no RHEL/CentOS/Fedora
+      yum:
+        name: zabbix-agent
+        state: present
+      when: "'RedHat' in distro_info.ansible_facts.ansible_distribution or 'CentOS' in distro_info.ansible_facts.ansible_distribution or 'Fedora' in distro_info.ansible_facts.ansible_distribution"
+
+    - name: Configurar o Server do Zabbix Agent
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server='
+        line: "Server={{ zabbix_server_ip }}"
+        state: present
+        backup: yes
+
+    - name: Configurar o ServerActive do Zabbix Agent
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^ServerActive='
+        line: "ServerActive={{ zabbix_server_ip }}"
+        state: present
+
+    - name: Configurar o Hostname automático
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Hostname='
+        line: "Hostname={{ inventory_hostname }}"
+        state: present
+
+    - name: Habilitar e iniciar o serviço do Zabbix Agent
+      systemd:
+        name: zabbix-agent
+        enabled: yes
+        state: restarted
