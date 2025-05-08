@@ -98,23 +98,29 @@
             DESCONHECIDO - {{ hn }}
           {% endif %}
 
-    - name: Registrar host no Zabbix via API
-      community.zabbix.zabbix_host:
-        host_name: "{{ zabbix_hostname }}"
-        visible_name: "{{ zabbix_hostname }}"
-        host_groups:
-          - "{{ zabbix_host_group }}"
-        interfaces:
-          - type: 1
-            main: 1
-            useip: 1
-            ip: "{{ ansible_facts['default_ipv4']['address'] }}"
-            dns: ""
-            port: "10050"
-        link_templates:
-          - "{{ zabbix_template_name }}"
-        status: enabled
-        state: present
-        server_url: "{{ zabbix_api_url }}"
-        login_user: "{{ zabbix_api_user }}"
-        login_password: "{{ zabbix_api_pass }}"
+      - name: Obter token da API do Zabbix
+        community.zabbix.zabbix_api_token:
+          server_url: "http://192.168.200.37/zabbix"
+          login_user: "Admin"
+          login_password: "33Uy`Njjr/Mnn$.$/C1N"
+        register: zabbix_auth
+      
+      - name: Registrar host no Zabbix
+        community.zabbix.zabbix_host:
+          host_name: "{{ zabbix_hostname }}"
+          visible_name: "{{ zabbix_hostname }}"
+          host_groups:
+            - "{{ zabbix_host_group }}"
+          interfaces:
+            - type: 1
+              main: 1
+              useip: 1
+              ip: "{{ ansible_facts['default_ipv4']['address'] }}"
+              dns: ""
+              port: "10050"
+          link_templates:
+            - "{{ zabbix_template_name }}"
+          status: enabled
+          state: present
+          auth: "{{ zabbix_auth.auth }}"
+          server_url: "http://192.168.200.37/zabbix"
