@@ -88,7 +88,7 @@
           {% set ip = ansible_facts['default_ipv4']['address'] %}
           {% set hn = ansible_facts['hostname'] | upper %}
           {% if ip.startswith('192.168') %}
-            EQUINIX SP3 - {{ hn }}
+            EQUINIX SSP3 - {{ hn }}
           {% elif ip.startswith('10.10.4') %}
             ALPHAVILLE - {{ hn }}
           {% elif ip.startswith('10.10.0') or ip.startswith('172.18') %}
