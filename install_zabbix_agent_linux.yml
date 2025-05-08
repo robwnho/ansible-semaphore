@@ -165,7 +165,7 @@
                 dns: ""
                 port: "10050"
             groups:
-              - name: "{{ zabbix_host_group }}"
+              - groupid: "{{ zabbix_host_group }}"
             templates:
               - name: "{{ zabbix_template_name }}"
           auth: "{{ zabbix_auth_response.json.result }}"
