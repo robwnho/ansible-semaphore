@@ -1,29 +1,49 @@
 ---
-- name: Instalação e configuração do Zabbix Agent
+- name: Instalar e configurar o Zabbix Agent com repositório oficial
   hosts: all
   become: yes
   vars:
+    zabbix_version: "6.0"
     zabbix_server_ip: "192.168.200.37"
 
   tasks:
 
-    - name: Detectar a distribuição Linux
+    - name: Detectar informações do sistema
       ansible.builtin.setup:
-        filter: ansible_distribution
-      register: distro_info
+        gather_subset: min
+      register: system_info
 
-    - name: Instalar o Zabbix Agent no Debian/Ubuntu
+    - name: Adicionar repositório Zabbix no Debian/Ubuntu
       apt:
-        name: zabbix-agent
-        state: present
-        update_cache: yes
-      when: "'Debian' in distro_info.ansible_facts.ansible_distribution or 'Ubuntu' in distro_info.ansible_facts.ansible_distribution"
+        deb: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/{{ ansible_facts['os_family'] | lower }}/pool/main/z/zabbix-release/zabbix-release_{{ zabbix_version }}-1+{{ ansible_facts['distribution_release'] | lower }}_all.deb"
+      when: ansible_facts['os_family'] == "Debian"
 
-    - name: Instalar o Zabbix Agent no RHEL/CentOS/Fedora
+    - name: Atualizar cache APT
+      apt:
+        update_cache: yes
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Adicionar repositório Zabbix no RHEL/CentOS
+      get_url:
+        url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/rhel/{{ ansible_facts['distribution_major_version'] }}/x86_64/zabbix-release-{{ zabbix_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
+        dest: /tmp/zabbix-release.rpm
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Instalar repositório RPM
       yum:
+        name: /tmp/zabbix-release.rpm
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Atualizar cache YUM
+      yum:
+        update_cache: yes
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Instalar o Zabbix Agent
+      package:
         name: zabbix-agent
         state: present
-      when: "'RedHat' in distro_info.ansible_facts.ansible_distribution or 'CentOS' in distro_info.ansible_facts.ansible_distribution or 'Fedora' in distro_info.ansible_facts.ansible_distribution"
 
     - name: Configurar o Server do Zabbix Agent
       lineinfile:
