@@ -13,7 +13,6 @@
     zabbix_template_name: "Template OS Linux"
 
   tasks:
-
     - name: Determinar URL do pacote zabbix-release conforme versão
       set_fact:
         zabbix_release_url: >-
@@ -41,14 +40,19 @@
         dest: /tmp/zabbix-release.deb
         mode: '0644'
 
-    - name: Instalar pacote zabbix-release
+    - name: Instalar pacote zabbix-release (ignorar se já existe)
       apt:
         deb: /tmp/zabbix-release.deb
         state: present
+      failed_when: false
 
-    - name: Atualizar cache APT
-      apt:
-        update_cache: yes
+    - name: Atualizar APT (permitindo mudanças de label)
+      command: apt-get update --allow-releaseinfo-change
+      changed_when: false
+
+    - name: Coletar pacotes instalados
+      package_facts:
+        manager: auto
 
     - name: Instalar zabbix-agent se não estiver presente
       apt:
@@ -61,21 +65,18 @@
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Server='
         line: "Server={{ zabbix_server_ip }}"
-        state: present
 
     - name: Configurar ServerActive
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^ServerActive='
         line: "ServerActive={{ zabbix_server_ip }}"
-        state: present
 
     - name: Configurar Hostname
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Hostname='
         line: "Hostname={{ inventory_hostname }}"
-        state: present
 
     - name: Iniciar e habilitar zabbix-agent
       systemd:
