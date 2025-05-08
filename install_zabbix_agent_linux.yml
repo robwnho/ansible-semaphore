@@ -97,7 +97,7 @@
             DESCONHECIDO - {{ hn }}
           {% endif %}
 
-    - name: Autenticar no Zabbix API (obter token)
+    - name: Autenticar na API Zabbix e obter token
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -108,33 +108,40 @@
           jsonrpc: "2.0"
           method: "user.login"
           params:
-            username: "{{ zabbix_api_user }}"
+            user: "{{ zabbix_api_user }}"
             password: "{{ zabbix_api_pass }}"
           id: 1
           auth: null
       register: zabbix_auth_response
 
-    - name: Falhar se autenticação na API falhar
+    - name: Verificar erro de autenticação
       fail:
-        msg: "Falha ao autenticar na API do Zabbix: {{ zabbix_auth_response.json.error }}"
+        msg: "Erro ao autenticar na API Zabbix: {{ zabbix_auth_response.json.error }}"
       when: zabbix_auth_response.json.result is not defined
 
-    - name: Registrar host via Zabbix API
-      community.zabbix.zabbix_host:
-        host_name: "{{ zabbix_hostname }}"
-        visible_name: "{{ zabbix_hostname }}"
-        host_groups:
-          - "{{ zabbix_host_group }}"
-        interfaces:
-          - type: 1
-            main: 1
-            useip: 1
-            ip: "{{ ansible_facts['default_ipv4']['address'] }}"
-            dns: ""
-            port: "10050"
-        link_templates:
-          - "{{ zabbix_template_name }}"
-        status: enabled
-        state: present
-        server_url: "{{ zabbix_api_url }}"
-        auth: "{{ zabbix_auth_response.json.result }}"
+    - name: Criar host via chamada direta à API Zabbix
+      uri:
+        url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          jsonrpc: "2.0"
+          method: "host.create"
+          params:
+            host: "{{ zabbix_hostname }}"
+            interfaces:
+              - type: 1
+                main: 1
+                useip: 1
+                ip: "{{ ansible_facts['default_ipv4']['address'] }}"
+                dns: ""
+                port: "10050"
+            groups:
+              - name: "{{ zabbix_host_group }}"
+            templates:
+              - name: "{{ zabbix_template_name }}"
+          auth: "{{ zabbix_auth_response.json.result }}"
+          id: 2
+      register: zabbix_create_result
