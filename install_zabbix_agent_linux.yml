@@ -14,19 +14,22 @@
 
   tasks:
 
-    - name: Determinar URL do pacote zabbix-release conforme versão
+    - name: Definir URL do pacote zabbix-release conforme versão
       set_fact:
-        zabbix_hostname: >-
-          {{
-            (
-              (
-                'EQUINIX SP3 - ' if ansible_facts['default_ipv4']['address'].startswith('192.168') else
-                'ALPHAVILLE - ' if ansible_facts['default_ipv4']['address'].startswith('10.10.4') else
-                'ITAPEVI - ' if ansible_facts['default_ipv4']['address'].startswith('10.10.0') or ansible_facts['default_ipv4']['address'].startswith('172.18') else
-                'DESCONHECIDO - '
-              ) + ansible_facts['hostname'] | upper
-            ).strip()
-          }}
+        zabbix_release_url: >-
+          {% set v = ansible_facts['distribution_version'] %}
+          {% if v == '24.04' %}
+            https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu24.04_all.deb
+          {% elif v == '22.04' %}
+            https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu22.04_all.deb
+          {% elif v == '20.04' %}
+            https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu20.04_all.deb
+          {% elif v == '18.04' %}
+            https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu18.04_all.deb
+          {% else %}
+            ''
+          {% endif %}
+
 
 
     - name: Abortar se versão não suportada
