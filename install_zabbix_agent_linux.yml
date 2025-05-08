@@ -146,6 +146,6 @@
           id: 2
       register: zabbix_create_result
 
-      - name: Mostrar resposta da criação do host
-        debug:
-          var: zabbix_create_result.json
+    - name: Mostrar resposta da criação do host
+      debug:
+        var: zabbix_create_result.json
