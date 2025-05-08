@@ -7,40 +7,45 @@
     zabbix_server_ip: "192.168.200.37"
     zabbix_api_url: "http://192.168.200.37/zabbix"
     zabbix_api_user: "Admin"
-    zabbix_api_pass: "zabbix"  # <- troque pela senha real
+    zabbix_api_pass: "zabbix"  # ← Altere aqui sua senha real
     zabbix_host_group: "SERVIDORES ARKLOK"
     zabbix_template_name: "Linux by Zabbix agent"
 
   tasks:
 
-    - name: Definir versão do Ubuntu
+    - name: Corrigir versão para 24.04 (usará pacote 22.04)
       set_fact:
-        ubuntu_version_number: "{{ ansible_facts['distribution_version'] | regex_replace('\\.', '') }}"
+        ubuntu_version_number: >-
+          {% if ansible_facts['distribution_version'] == '24.04' %}
+            2204
+          {% else %}
+            {{ ansible_facts['distribution_version'] | regex_replace('\\.', '') }}
+          {% endif %}
 
     - name: Construir URL do pacote zabbix-release
       set_fact:
         zabbix_repo_url: "https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu{{ ubuntu_version_number }}_all.deb"
 
-    - name: Baixar o pacote de repositório do Zabbix
+    - name: Baixar pacote zabbix-release
       get_url:
         url: "{{ zabbix_repo_url }}"
         dest: "/tmp/zabbix-release.deb"
 
-    - name: Instalar o repositório Zabbix
+    - name: Instalar pacote zabbix-release
       apt:
         deb: "/tmp/zabbix-release.deb"
         state: present
 
-    - name: Atualizar cache APT
+    - name: Atualizar cache do APT
       apt:
         update_cache: yes
 
-    - name: Instalar o Zabbix Agent
+    - name: Instalar zabbix-agent
       apt:
         name: zabbix-agent
         state: present
 
-    - name: Configurar o Server
+    - name: Configurar Server
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Server='
@@ -48,21 +53,21 @@
         state: present
         backup: yes
 
-    - name: Configurar o ServerActive
+    - name: Configurar ServerActive
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^ServerActive='
         line: "ServerActive={{ zabbix_server_ip }}"
         state: present
 
-    - name: Configurar o Hostname automático
+    - name: Configurar Hostname automático
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Hostname='
         line: "Hostname={{ inventory_hostname }}"
         state: present
 
-    - name: Habilitar e iniciar o serviço do Zabbix Agent
+    - name: Habilitar e iniciar zabbix-agent
       systemd:
         name: zabbix-agent
         enabled: yes
