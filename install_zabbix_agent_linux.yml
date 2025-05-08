@@ -14,7 +14,7 @@
 
   tasks:
 
-    - name: Definir URL do pacote zabbix-release
+    - name: Determinar URL do pacote zabbix-release conforme versão
       set_fact:
         zabbix_release_url: >-
           {% set v = ansible_facts['distribution_version'] %}
@@ -30,7 +30,7 @@
             ''
           {% endif %}
 
-    - name: Abortar se a versão do Ubuntu não for suportada
+    - name: Abortar se versão não suportada
       fail:
         msg: "Ubuntu {{ ansible_facts['distribution_version'] }} não é suportado."
       when: zabbix_release_url == ''
@@ -50,7 +50,7 @@
       apt:
         update_cache: yes
 
-    - name: Instalar o Zabbix Agent
+    - name: Instalar zabbix-agent
       apt:
         name: zabbix-agent
         state: present
@@ -61,7 +61,6 @@
         regexp: '^Server='
         line: "Server={{ zabbix_server_ip }}"
         state: present
-        backup: yes
 
     - name: Configurar ServerActive
       lineinfile:
@@ -77,13 +76,13 @@
         line: "Hostname={{ inventory_hostname }}"
         state: present
 
-    - name: Iniciar e habilitar o Zabbix Agent
+    - name: Iniciar e habilitar zabbix-agent
       systemd:
         name: zabbix-agent
         enabled: yes
         state: restarted
 
-    - name: Definir nome do host Zabbix conforme IP
+    - name: Gerar nome do host Zabbix baseado no IP
       set_fact:
         zabbix_hostname: >-
           {% set ip = ansible_facts['default_ipv4']['address'] %}
@@ -98,14 +97,24 @@
             DESCONHECIDO - {{ hn }}
           {% endif %}
 
-    - name: Obter token de autenticação da API Zabbix
-      community.zabbix.zabbix_api_token:
-        server_url: "{{ zabbix_api_url }}"
-        login_user: "{{ zabbix_api_user }}"
-        login_password: "{{ zabbix_api_pass }}"
-      register: zabbix_auth
+    - name: Autenticar no Zabbix API (obter token)
+      uri:
+        url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          jsonrpc: "2.0"
+          method: "user.login"
+          params:
+            user: "{{ zabbix_api_user }}"
+            password: "{{ zabbix_api_pass }}"
+          id: 1
+          auth: null
+      register: zabbix_auth_response
 
-    - name: Registrar host no Zabbix com token
+    - name: Registrar host via Zabbix API
       community.zabbix.zabbix_host:
         host_name: "{{ zabbix_hostname }}"
         visible_name: "{{ zabbix_hostname }}"
@@ -122,5 +131,5 @@
           - "{{ zabbix_template_name }}"
         status: enabled
         state: present
-        auth: "{{ zabbix_auth.auth }}"
         server_url: "{{ zabbix_api_url }}"
+        auth: "{{ zabbix_auth_response.json.result }}"
