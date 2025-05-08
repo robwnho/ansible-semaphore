@@ -3,17 +3,18 @@
   hosts: all
   become: yes
   gather_facts: yes
+
   vars:
     zabbix_server_ip: "192.168.200.37"
-    zabbix_api_url: "http://192.168.200.37/zabbix"
-    zabbix_api_user: "Admin"
-    zabbix_api_pass: "33Uy`Njjr/Mnn$.$/C1N"  # Troque pela senha real
     zabbix_host_group: "SERVIDORES ARKLOK"
     zabbix_template_name: "Linux by Zabbix agent"
+    zabbix_api_url: "http://192.168.200.37/zabbix"
+    zabbix_api_user: "Admin"
+    zabbix_api_pass: "33Uy`Njjr/Mnn$.$/C1N"
 
   tasks:
 
-    - name: Definir pacote correto do zabbix-release por versão do Ubuntu
+    - name: Definir URL correta do pacote zabbix-release
       set_fact:
         zabbix_release_url: >-
           {% set v = ansible_facts['distribution_version'] %}
@@ -29,20 +30,20 @@
             ''
           {% endif %}
 
-    - name: Verificar se a versão é suportada
+    - name: Abortar se a versão do Ubuntu não for suportada
       fail:
-        msg: "Ubuntu {{ ansible_facts['distribution_version'] }} não é suportado por este playbook."
+        msg: "Ubuntu {{ ansible_facts['distribution_version'] }} não é suportado."
       when: zabbix_release_url == ''
 
-    - name: Baixar o pacote do repositório Zabbix
+    - name: Baixar pacote zabbix-release
       get_url:
         url: "{{ zabbix_release_url }}"
-        dest: "/tmp/zabbix-release.deb"
+        dest: /tmp/zabbix-release.deb
         mode: '0644'
 
-    - name: Instalar o pacote do repositório Zabbix
+    - name: Instalar pacote zabbix-release
       apt:
-        deb: "/tmp/zabbix-release.deb"
+        deb: /tmp/zabbix-release.deb
         state: present
 
     - name: Atualizar cache APT
@@ -54,7 +55,7 @@
         name: zabbix-agent
         state: present
 
-    - name: Configurar o Server
+    - name: Configurar Server
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Server='
@@ -62,27 +63,27 @@
         state: present
         backup: yes
 
-    - name: Configurar o ServerActive
+    - name: Configurar ServerActive
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^ServerActive='
         line: "ServerActive={{ zabbix_server_ip }}"
         state: present
 
-    - name: Configurar o Hostname automático
+    - name: Configurar Hostname
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Hostname='
         line: "Hostname={{ inventory_hostname }}"
         state: present
 
-    - name: Habilitar e iniciar o Zabbix Agent
+    - name: Iniciar e habilitar o Zabbix Agent
       systemd:
         name: zabbix-agent
         enabled: yes
         state: restarted
 
-    - name: Definir nome do host conforme IP
+    - name: Definir nome do host Zabbix conforme IP
       set_fact:
         zabbix_hostname: >-
           {% set ip = ansible_facts['default_ipv4']['address'] %}
@@ -97,14 +98,11 @@
             DESCONHECIDO - {{ hn }}
           {% endif %}
 
-    - name: Adicionar host no Zabbix via API
+    - name: Registrar host no Zabbix via API
       community.zabbix.zabbix_host:
-        server_url: "{{ zabbix_api_url }}"
-        login_user: "{{ zabbix_api_user }}"
-        login_password: "{{ zabbix_api_pass }}"
         host_name: "{{ zabbix_hostname }}"
         visible_name: "{{ zabbix_hostname }}"
-        groups:
+        host_groups:
           - "{{ zabbix_host_group }}"
         interfaces:
           - type: 1
@@ -113,7 +111,10 @@
             ip: "{{ ansible_facts['default_ipv4']['address'] }}"
             dns: ""
             port: "10050"
-        templates:
+        link_templates:
           - "{{ zabbix_template_name }}"
         status: enabled
         state: present
+        server_url: "{{ zabbix_api_url }}"
+        login_user: "{{ zabbix_api_user }}"
+        login_password: "{{ zabbix_api_pass }}"
