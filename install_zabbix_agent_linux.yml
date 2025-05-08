@@ -115,5 +115,5 @@
             port: "10050"
         templates:
           - "{{ zabbix_template_name }}"
-        status: 0
+        status: enabled
         state: present
