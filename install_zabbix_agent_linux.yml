@@ -6,15 +6,15 @@
 
   vars:
     zabbix_server_ip: "192.168.200.37"
-    zabbix_host_group: "SERVIDORES ARKLOK"
-    zabbix_template_name: "Linux by Zabbix agent"
     zabbix_api_url: "http://192.168.200.37/zabbix"
     zabbix_api_user: "Admin"
     zabbix_api_pass: "33Uy`Njjr/Mnn$.$/C1N"
+    zabbix_host_group: "SERVIDORES ARKLOK"
+    zabbix_template_name: "Linux by Zabbix agent"
 
   tasks:
 
-    - name: Definir URL correta do pacote zabbix-release
+    - name: Definir URL do pacote zabbix-release
       set_fact:
         zabbix_release_url: >-
           {% set v = ansible_facts['distribution_version'] %}
@@ -98,29 +98,29 @@
             DESCONHECIDO - {{ hn }}
           {% endif %}
 
-      - name: Obter token da API do Zabbix
-        community.zabbix.zabbix_api_token:
-          server_url: "http://192.168.200.37/zabbix"
-          login_user: "Admin"
-          login_password: "33Uy`Njjr/Mnn$.$/C1N"
-        register: zabbix_auth
-      
-      - name: Registrar host no Zabbix
-        community.zabbix.zabbix_host:
-          host_name: "{{ zabbix_hostname }}"
-          visible_name: "{{ zabbix_hostname }}"
-          host_groups:
-            - "{{ zabbix_host_group }}"
-          interfaces:
-            - type: 1
-              main: 1
-              useip: 1
-              ip: "{{ ansible_facts['default_ipv4']['address'] }}"
-              dns: ""
-              port: "10050"
-          link_templates:
-            - "{{ zabbix_template_name }}"
-          status: enabled
-          state: present
-          auth: "{{ zabbix_auth.auth }}"
-          server_url: "http://192.168.200.37/zabbix"
+    - name: Obter token de autenticação da API Zabbix
+      community.zabbix.zabbix_api_token:
+        server_url: "{{ zabbix_api_url }}"
+        login_user: "{{ zabbix_api_user }}"
+        login_password: "{{ zabbix_api_pass }}"
+      register: zabbix_auth
+
+    - name: Registrar host no Zabbix com token
+      community.zabbix.zabbix_host:
+        host_name: "{{ zabbix_hostname }}"
+        visible_name: "{{ zabbix_hostname }}"
+        host_groups:
+          - "{{ zabbix_host_group }}"
+        interfaces:
+          - type: 1
+            main: 1
+            useip: 1
+            ip: "{{ ansible_facts['default_ipv4']['address'] }}"
+            dns: ""
+            port: "10050"
+        link_templates:
+          - "{{ zabbix_template_name }}"
+        status: enabled
+        state: present
+        auth: "{{ zabbix_auth.auth }}"
+        server_url: "{{ zabbix_api_url }}"
