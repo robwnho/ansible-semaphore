@@ -138,6 +138,28 @@
       set_fact:
         zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
 
+    - name: Buscar o template "{{ zabbix_template_name }}"
+      uri:
+        url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          jsonrpc: "2.0"
+          method: "template.get"
+          params:
+            output: ["templateid", "name"]
+            filter:
+              host: ["{{ zabbix_template_name }}"]
+          auth: "{{ zabbix_auth_response.json.result }}"
+          id: 4
+      register: zabbix_template_response
+
+    - name: Definir templateid como número
+      set_fact:
+        zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
+
     - name: Criar host via chamada direta à API Zabbix
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
@@ -165,11 +187,11 @@
                 { "groupid": {{ zabbix_groupid }} }
               ],
               "templates": [
-                { "name": "{{ zabbix_template_name }}" }
+                { "templateid": {{ zabbix_templateid }} }
               ]
             },
             "auth": "{{ zabbix_auth_response.json.result }}",
-            "id": 3
+            "id": 5
           }
       register: zabbix_create_result
 
