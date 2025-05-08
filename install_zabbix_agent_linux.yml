@@ -87,17 +87,15 @@
     - name: Gerar nome do host Zabbix baseado no IP
       set_fact:
         zabbix_hostname: >-
-          {% set ip = ansible_facts['default_ipv4']['address'] %}
-          {% set hn = ansible_facts['hostname'] | upper %}
-          {% if ip.startswith('192.168') %}
-            EQUINIX SSP3 - {{ hn }}
-          {% elif ip.startswith('10.10.4') %}
-            ALPHAVILLE - {{ hn }}
-          {% elif ip.startswith('10.10.0') or ip.startswith('172.18') %}
-            ITAPEVI - {{ hn }}
-          {% else %}
-            DESCONHECIDO - {{ hn }}
-          {% endif %}
+          {{
+            (
+              ('EQUINIX SP3 - ' if ansible_facts['default_ipv4']['address'].startswith('192.168') else
+               'ALPHAVILLE - ' if ansible_facts['default_ipv4']['address'].startswith('10.10.4') else
+               'ITAPEVI - ' if ansible_facts['default_ipv4']['address'].startswith('10.10.0') or ansible_facts['default_ipv4']['address'].startswith('172.18') else
+               'DESCONHECIDO - ')
+              + ansible_facts['hostname'] | upper
+            ).strip()
+          }}
 
     - name: Autenticar na API Zabbix e obter token
       uri:
