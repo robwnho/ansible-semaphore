@@ -114,6 +114,32 @@
           auth: null
       register: zabbix_auth_response
 
+
+
+      - name: Buscar o groupid do grupo "{{ zabbix_host_group }}"
+        uri:
+          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+          method: POST
+          body_format: json
+          headers:
+            Content-Type: "application/json"
+          body:
+            jsonrpc: "2.0"
+            method: "hostgroup.get"
+            params:
+              filter:
+                name: ["{{ zabbix_host_group }}"]
+            auth: "{{ zabbix_auth_response.json.result }}"
+            id: 3
+        register: zabbix_group_response
+
+      - name: Definir groupid
+        set_fact:
+          zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid }}"
+
+
+
+
     - name: Verificar erro de autenticação
       fail:
         msg: "Erro ao autenticar na API Zabbix: {{ zabbix_auth_response.json.error }}"
