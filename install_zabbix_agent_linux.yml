@@ -1,42 +1,46 @@
 ---
-- name: Instalar e configurar Zabbix Agent no Ubuntu (18.04, 20.04, 22.04, 24.04)
+- name: Instala e registra o Zabbix Agent no Zabbix Server
   hosts: all
   become: yes
+  gather_facts: yes
   vars:
     zabbix_server_ip: "192.168.200.37"
+    zabbix_api_url: "http://192.168.200.37/zabbix"
+    zabbix_api_user: "Admin"
+    zabbix_api_pass: "zabbix"  # <- troque pela senha real
+    zabbix_host_group: "SERVIDORES ARKLOK"
+    zabbix_template_name: "Linux by Zabbix agent"
 
   tasks:
 
-    - name: Verificar versão do Ubuntu
+    - name: Definir versão do Ubuntu
       set_fact:
-        ubuntu_version: "{{ ansible_facts['distribution_version'] }}"
+        ubuntu_version_number: "{{ ansible_facts['distribution_version'] | regex_replace('\\.', '') }}"
 
-    - name: Definir URL do pacote Zabbix release conforme a versão
+    - name: Construir URL do pacote zabbix-release
       set_fact:
-        zabbix_repo_url: >-
-          {{ 'https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu' +
-          (ubuntu_version | regex_replace('\\.', '')) + '_all.deb' }}
+        zabbix_repo_url: "https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_6.0+ubuntu{{ ubuntu_version_number }}_all.deb"
 
-    - name: Baixar pacote do repositório Zabbix
+    - name: Baixar o pacote de repositório do Zabbix
       get_url:
         url: "{{ zabbix_repo_url }}"
         dest: "/tmp/zabbix-release.deb"
 
-    - name: Instalar pacote .deb do repositório Zabbix
+    - name: Instalar o repositório Zabbix
       apt:
         deb: "/tmp/zabbix-release.deb"
         state: present
 
-    - name: Atualizar cache do APT
+    - name: Atualizar cache APT
       apt:
         update_cache: yes
 
-    - name: Instalar zabbix-agent
+    - name: Instalar o Zabbix Agent
       apt:
         name: zabbix-agent
         state: present
 
-    - name: Configurar Server
+    - name: Configurar o Server
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Server='
@@ -44,22 +48,58 @@
         state: present
         backup: yes
 
-    - name: Configurar ServerActive
+    - name: Configurar o ServerActive
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^ServerActive='
         line: "ServerActive={{ zabbix_server_ip }}"
         state: present
 
-    - name: Configurar Hostname automático
+    - name: Configurar o Hostname automático
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
         regexp: '^Hostname='
         line: "Hostname={{ inventory_hostname }}"
         state: present
 
-    - name: Iniciar e habilitar zabbix-agent
+    - name: Habilitar e iniciar o serviço do Zabbix Agent
       systemd:
         name: zabbix-agent
         enabled: yes
         state: restarted
+
+    - name: Definir nome do host conforme IP
+      set_fact:
+        zabbix_hostname: >-
+          {% set ip = ansible_facts['default_ipv4']['address'] %}
+          {% set hn = ansible_facts['hostname'] | upper %}
+          {% if ip.startswith('192.168') %}
+            EQUINIX SP3 - {{ hn }}
+          {% elif ip.startswith('10.10.4') %}
+            ALPHAVILLE - {{ hn }}
+          {% elif ip.startswith('10.10.0') or ip.startswith('172.18') %}
+            ITAPEVI - {{ hn }}
+          {% else %}
+            DESCONHECIDO - {{ hn }}
+          {% endif %}
+
+    - name: Adicionar host no Zabbix via API
+      community.zabbix.zabbix_host:
+        server_url: "{{ zabbix_api_url }}"
+        login_user: "{{ zabbix_api_user }}"
+        login_password: "{{ zabbix_api_pass }}"
+        host_name: "{{ zabbix_hostname }}"
+        visible_name: "{{ zabbix_hostname }}"
+        groups:
+          - "{{ zabbix_host_group }}"
+        interfaces:
+          - type: 1
+            main: 1
+            useip: 1
+            ip: "{{ ansible_facts['default_ipv4']['address'] }}"
+            dns: ""
+            port: "10050"
+        templates:
+          - "{{ zabbix_template_name }}"
+        status: 0
+        state: present
