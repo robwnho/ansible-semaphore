@@ -106,7 +106,7 @@
           jsonrpc: "2.0"
           method: "user.login"
           params:
-            user: "{{ zabbix_api_user }}"
+            username: "{{ zabbix_api_user }}"
             password: "{{ zabbix_api_pass }}"
           id: 1
           auth: null
