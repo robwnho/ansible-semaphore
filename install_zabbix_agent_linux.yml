@@ -158,26 +158,30 @@
         body_format: json
         headers:
           Content-Type: "application/json"
-        body:
-          jsonrpc: "2.0"
-          method: "host.create"
-          params:
-            host: "{{ zabbix_hostname }}"
-            interfaces:
-              - type: 1
-                main: 1
-                useip: 1
-                ip: "{{ ansible_facts['default_ipv4']['address'] }}"
-                dns: ""
-                port: "10050"
-            groups:
-              - groupid: "{{ zabbix_host_group }}"
-            templates:
-              - name: "{{ zabbix_template_name }}"
-          auth: "{{ zabbix_auth_response.json.result }}"
-          id: 2
+        body: >
+          {
+            "jsonrpc": "2.0",
+            "method": "host.create",
+            "params": {
+              "host": "{{ zabbix_hostname }}",
+              "interfaces": [
+                {
+                  "type": 1,
+                  "main": 1,
+                  "useip": 1,
+                  "ip": "{{ ansible_facts['default_ipv4']['address'] }}",
+                  "dns": "",
+                  "port": "10050"
+                }
+              ],
+              "groups": [
+                { "groupid": {{ zabbix_groupid | int }} }
+              ],
+              "templates": [
+                { "name": "{{ zabbix_template_name }}" }
+              ]
+            },
+            "auth": "{{ zabbix_auth_response.json.result }}",
+            "id": 2
+          }
       register: zabbix_create_result
-
-    - name: Mostrar resposta da criação do host
-      debug:
-        var: zabbix_create_result.json
