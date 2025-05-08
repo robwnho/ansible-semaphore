@@ -145,6 +145,12 @@
         msg: "Erro ao autenticar na API Zabbix: {{ zabbix_auth_response.json.error }}"
       when: zabbix_auth_response.json.result is not defined
 
+    - name: Definir groupid como número
+      set_fact:
+        zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
+
+
+
     - name: Criar host via chamada direta à API Zabbix
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
