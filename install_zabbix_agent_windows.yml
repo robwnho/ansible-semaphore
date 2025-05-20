@@ -169,34 +169,27 @@
         body_format: json
         headers:
           Content-Type: "application/json"
-        body: >
-          {
-            "jsonrpc": "2.0",
-            "method": "host.create",
-            "params": {
-              "host": "{{ zabbix_hostname }}",
-              "interfaces": [
-                {
-                  "type": 1,
-                  "main": 1,
-                  "useip": 1,
-                  "ip": "{{ ip_do_host }}",
-                  "dns": "",
-                  "port": "10050"
-                }
-              ],
-              "groups": [
-                { "groupid": {{ zabbix_groupid }} }
-              ],
-              "templates": [
-                { "templateid": {{ zabbix_templateid }} }
-              ]
-            },
-            "auth": "{{ zabbix_auth_response.json.result }}",
-            "id": 5
-          }
+        body:
+          jsonrpc: "2.0"
+          method: "host.create"
+          params:
+            host: "{{ zabbix_hostname }}"
+            interfaces:
+              - type: 1
+                main: 1
+                useip: 1
+                ip: "{{ ip_do_host }}"
+                dns: ""
+                port: "10050"
+            groups:
+              - groupid: "{{ zabbix_groupid }}"
+            templates:
+              - templateid: "{{ zabbix_templateid }}"
+          auth: "{{ zabbix_auth_response.json.result }}"
+          id: 5
       when: zabbix_host_check.json.result | length == 0
       register: zabbix_create_result
+
 
     - name: Mostrar resposta da criação
       debug:
