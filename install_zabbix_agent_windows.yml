@@ -23,7 +23,7 @@
     - name: Definir IP e Hostname
       set_fact:
         ip_do_host: "{{ ip_output.stdout | trim }}"
-        zabbix_hostname: "WINDOWS-{{ ip_output.stdout | replace('.', '-') }}"
+        zabbix_hostname: "{{ ('WINDOWS-' ~ ip_output.stdout | replace('.', '-') | regex_replace('[^A-Za-z0-9\\-]', '') ) | trim }}"
 
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
