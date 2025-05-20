@@ -16,11 +16,26 @@
 
   tasks:
 
-    - name: Remover instalação anterior (opcional)
-      win_package:
-        product_name: "Zabbix Agent 2"
-        state: absent
-      ignore_errors: yes
+    - name: Obter IP principal do host
+      win_command: "(Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Ethernet' | Where-Object {$_.IPAddress -notlike '169.*'} | Select-Object -First 1 -ExpandProperty IPAddress)"
+      register: ip_output
+
+    - name: Definir IP como variável
+      set_fact:
+        ip_do_host: "{{ ip_output.stdout }}"
+
+    - name: Gerar nome do host Zabbix baseado no IP
+      set_fact:
+        zabbix_hostname: >-
+          {{
+            (
+              ('EQUINIX SP3 - ' if ip_do_host.startswith('192.168') else
+               'ALPHAVILLE - ' if ip_do_host.startswith('10.10.4') else
+               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') else
+               'DESCONHECIDO - ')
+              + ansible_facts['ansible_hostname'] | upper
+            ).strip()
+          }}
 
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
@@ -71,20 +86,6 @@
         name: "Zabbix Agent 2"
         state: restarted
         start_mode: auto
-
-    - name: Gerar nome do host Zabbix baseado no IP
-      set_fact:
-        zabbix_hostname: >-
-          {{
-            (
-              ('EQUINIX SP3 - ' if ansible_facts['ansible_ip_addresses'][0].startswith('192.168') else
-               'ALPHAVILLE - ' if ansible_facts['ansible_ip_addresses'][0].startswith('10.10.4') else
-               'ITAPEVI - ' if ansible_facts['ansible_ip_addresses'][0].startswith('10.10.0') or ansible_facts['ansible_ip_addresses'][0].startswith('172.18') else
-               'DESCONHECIDO - ')
-              + ansible_facts['ansible_hostname'] | upper
-            ).strip()
-          }}
-
 
     - name: Autenticar na API Zabbix
       uri:
@@ -163,7 +164,7 @@
       set_fact:
         zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
 
-    - name: Criar host no Zabbix se ainda não existir
+    - name: Criar host no Zabbix se não existir
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -181,7 +182,7 @@
                   "type": 1,
                   "main": 1,
                   "useip": 1,
-                  "ip": "{{ ansible_facts['ansible_ip_addresses'][0] }}",
+                  "ip": "{{ ip_do_host }}",
                   "dns": "",
                   "port": "10050"
                 }
