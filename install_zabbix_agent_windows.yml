@@ -19,14 +19,14 @@
     - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18)
       win_command: powershell -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { ($_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.10.4.*' -or $_.IPAddress -like '10.10.0.*' -or $_.IPAddress -like '172.18.*') -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress"
       register: ip_output
-      
-    - name: Mostrar resultado da coleta de IP
-      debug:
-        var: ip_output.stdout
+      failed_when: ip_output.stdout | trim == ""
 
-    - name: Definir IP e Hostname formatado
+    - name: Definir variável ip_do_host
       set_fact:
         ip_do_host: "{{ ip_output.stdout | trim }}"
+
+    - name: Gerar hostname Zabbix baseado no IP e hostname real
+      set_fact:
         zabbix_hostname: >-
           {{
             (
