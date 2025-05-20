@@ -206,26 +206,26 @@
       run_once: true
       when: zabbix_host_check.json.result | length == 0
 
-      - name: Buscar nome do host criado
-        delegate_to: localhost
-        run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body:
-            jsonrpc: "2.0"
-            method: "host.get"
-            params:
-              output: ["hostid", "host", "name"]
-              hostids: ["{{ zabbix_create_result.json.result.hostids[0] }}"]
-            auth: "{{ zabbix_auth_response.json.result }}"
-            id: 6
-        register: zabbix_host_lookup
+    - name: Buscar nome do host criado
+      delegate_to: localhost
+      run_once: true
+      uri:
+        url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          jsonrpc: "2.0"
+          method: "host.get"
+          params:
+            output: ["hostid", "host", "name"]
+            hostids: ["{{ zabbix_create_result.json.result.hostids[0] }}"]
+          auth: "{{ zabbix_auth_response.json.result }}"
+          id: 6
+      register: zabbix_host_lookup
       
-      - name: Mostrar nome do host criado
-        debug:
-          var: zabbix_host_lookup.json.result
+    - name: Mostrar nome do host criado
+       debug:
+         var: zabbix_host_lookup.json.result
 
