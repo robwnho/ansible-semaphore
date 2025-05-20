@@ -1,6 +1,10 @@
+from pathlib import Path
+
+# Conteúdo do playbook corrigido
+playbook_content = """---
 - name: Instala e registra o Zabbix Agent 2 no Windows
   hosts: windows
-  gather_facts: yes
+  gather_facts: no
 
   vars:
     zabbix_server_ip: "192.168.200.37"
@@ -11,31 +15,19 @@
     zabbix_template_name: "Windows by Zabbix agent"
     zabbix_agent_version: "6.4.10"
     zabbix_major_version: "6.4"
-    zabbix_install_path: 'C:\temp'
-    zabbix_conf_path: 'C:\Program Files\Zabbix Agent 2\zabbix_agent2.conf'
+    zabbix_install_path: 'C:\\temp'
+    zabbix_conf_path: 'C:\\Program Files\\Zabbix Agent 2\\zabbix_agent2.conf'
 
   tasks:
 
-    - name: Obter IP principal de forma genérica
-      win_command: powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -ne 'WellKnown' } | Select-Object -First 1 -ExpandProperty IPAddress)"
+    - name: Obter IP principal de forma segura e genérica
+      win_command: powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress)"
       register: ip_output
 
-    - name: Definir IP como variável
+    - name: Definir IP e Hostname
       set_fact:
         ip_do_host: "{{ ip_output.stdout | trim }}"
-
-    - name: Gerar nome do host Zabbix baseado no IP
-      set_fact:
-        zabbix_hostname: >-
-          {{
-            (
-              ('EQUINIX SP3 - ' if ip_do_host.startswith('192.168') else
-               'ALPHAVILLE - ' if ip_do_host.startswith('10.10.4') else
-               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') else
-               'DESCONHECIDO - ')
-              + ansible_facts['ansible_hostname'] | upper
-            ).strip()
-          }}
+        zabbix_hostname: "WINDOWS-{{ ip_output.stdout | replace('.', '-') }}"
 
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
@@ -78,7 +70,7 @@
       win_lineinfile:
         path: "{{ zabbix_conf_path }}"
         regexp: '^Hostname='
-        line: "Hostname={{ inventory_hostname }}"
+        line: "Hostname={{ zabbix_hostname }}"
         backup: yes
 
     - name: Reiniciar Zabbix Agent 2
@@ -204,3 +196,10 @@
       debug:
         var: zabbix_create_result.json
       when: zabbix_host_check.json.result | length == 0
+"""
+
+# Salvar o conteúdo em um arquivo .yml
+file_path = Path("/mnt/data/install_zabbix_agent_windows.yml")
+file_path.write_text(playbook_content, encoding="utf-8")
+
+file_path.name
