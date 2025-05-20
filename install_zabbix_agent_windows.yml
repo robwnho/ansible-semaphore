@@ -77,23 +77,23 @@
         start_mode: auto
 
     - name: Autenticar na API Zabbix
-    delegate_to: localhost
-    run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body:
-            jsonrpc: "2.0"
-            method: "user.login"
-            params:
-              username: "{{ zabbix_api_user }}"
-              password: "{{ zabbix_api_pass }}"
-            id: 1
-            auth: null
-        register: zabbix_auth_response
+      delegate_to: localhost
+      run_once: true
+          uri:
+            url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+            method: POST
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            body:
+              jsonrpc: "2.0"
+              method: "user.login"
+              params:
+                username: "{{ zabbix_api_user }}"
+                password: "{{ zabbix_api_pass }}"
+              id: 1
+              auth: null
+          register: zabbix_auth_response
 
     - name: Verificar se host já existe
       delegate_to: localhost
