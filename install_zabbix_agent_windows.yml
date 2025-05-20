@@ -16,13 +16,13 @@
 
   tasks:
 
-    - name: Obter IP principal do host
-      win_command: "(Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Ethernet' | Where-Object {$_.IPAddress -notlike '169.*'} | Select-Object -First 1 -ExpandProperty IPAddress)"
+    - name: Obter IP principal de forma genérica
+      win_command: powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -ne 'WellKnown' } | Select-Object -First 1 -ExpandProperty IPAddress)"
       register: ip_output
 
     - name: Definir IP como variável
       set_fact:
-        ip_do_host: "{{ ip_output.stdout }}"
+        ip_do_host: "{{ ip_output.stdout | trim }}"
 
     - name: Gerar nome do host Zabbix baseado no IP
       set_fact:
