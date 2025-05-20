@@ -12,7 +12,7 @@
     zabbix_agent_version: "6.4.10"
     zabbix_major_version: "6.4"
     zabbix_install_path: 'C:\temp'
-    zabbix_conf_path: 'C:\zabbix\zabbix_agentd.conf'
+    zabbix_conf_path: 'C:\Program Files\Zabbix Agent 2\zabbix_agent2.conf'
 
   tasks:
 
