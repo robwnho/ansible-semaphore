@@ -16,6 +16,18 @@
 
   tasks:
 
+    - name: Parar e remover serviço antigo "Zabbix Agent" (se existir)
+      win_shell: |
+        if (Get-Service -Name "Zabbix Agent" -ErrorAction SilentlyContinue) {
+          Stop-Service -Name "Zabbix Agent" -Force -ErrorAction SilentlyContinue
+          sc.exe delete "Zabbix Agent"
+        }
+
+    - name: Remover diretório antigo C:\zabbix (se existir)
+      win_file:
+        path: C:\zabbix
+        state: absent
+
     - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18)
       win_command: powershell -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { ($_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.10.4.*' -or $_.IPAddress -like '10.10.0.*' -or $_.IPAddress -like '172.18.*') -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress"
       register: ip_output
@@ -48,40 +60,6 @@
         path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
         arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME=\"{{ zabbix_hostname }}\""
-
-
-    - name: Comentar parâmetros antigos no conf
-      win_lineinfile:
-        path: "{{ zabbix_conf_path }}"
-        regexp: '^{{ item }}='
-        line: "# Removido por Ansible - {{ item }}"
-        state: present
-        backup: yes
-      loop:
-        - Server
-        - ServerActive
-        - Hostname
-
-    - name: Configurar Server
-      win_lineinfile:
-        path: "{{ zabbix_conf_path }}"
-        regexp: '^Server='
-        line: "Server={{ zabbix_server_ip }}"
-        backup: yes
-
-    - name: Configurar ServerActive
-      win_lineinfile:
-        path: "{{ zabbix_conf_path }}"
-        regexp: '^ServerActive='
-        line: "ServerActive={{ zabbix_server_ip }}"
-        backup: yes
-
-    - name: Configurar Hostname
-      win_lineinfile:
-        path: "{{ zabbix_conf_path }}"
-        regexp: '^Hostname='
-        line: "Hostname={{ zabbix_hostname }}"
-        backup: yes
 
     - name: Reiniciar Zabbix Agent 2
       win_service:
