@@ -1,4 +1,4 @@
-- name: Instala e registra o Zabbix Agent no Windows (Zabbix 6.4)
+- name: Instala e registra o Zabbix Agent 6.4 no Windows
   hosts: windows
   gather_facts: yes
 
@@ -12,9 +12,11 @@
     zabbix_agent_version: "6.4.10"
     zabbix_major_version: "6.4"
     zabbix_install_path: 'C:\temp'
+    zabbix_conf_path: 'C:\zabbix\zabbix_agentd.conf'
 
   tasks:
-    - name: Baixar instalador do Zabbix Agent 6.4 para Windows
+
+    - name: Baixar instalador do Zabbix Agent 6.4
       win_get_url:
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
         dest: "{{ zabbix_install_path }}\\zabbix_agent.msi"
@@ -23,13 +25,34 @@
       win_package:
         path: "{{ zabbix_install_path }}\\zabbix_agent.msi"
         state: present
-        arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME={{ inventory_hostname }}"
+        arguments: "/quiet"
 
-    - name: Iniciar e configurar Zabbix Agent como automático
+    - name: Configurar Server
+      win_lineinfile:
+        path: "{{ zabbix_conf_path }}"
+        regexp: '^Server='
+        line: "Server={{ zabbix_server_ip }}"
+        backup: yes
+
+    - name: Configurar ServerActive
+      win_lineinfile:
+        path: "{{ zabbix_conf_path }}"
+        regexp: '^ServerActive='
+        line: "ServerActive={{ zabbix_server_ip }}"
+        backup: yes
+
+    - name: Configurar Hostname
+      win_lineinfile:
+        path: "{{ zabbix_conf_path }}"
+        regexp: '^Hostname='
+        line: "Hostname={{ inventory_hostname }}"
+        backup: yes
+
+    - name: Reiniciar Zabbix Agent
       win_service:
-        name: Zabbix Agent
+        name: "Zabbix Agent"
+        state: restarted
         start_mode: auto
-        state: started
 
     - name: Gerar nome do host Zabbix baseado no IP
       set_fact:
