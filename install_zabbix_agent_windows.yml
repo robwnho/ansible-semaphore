@@ -1,6 +1,6 @@
 - name: Instala e registra o Zabbix Agent 2 no Windows
   hosts: windows
-  gather_facts: no
+  gather_facts: yes
 
   vars:
     zabbix_server_ip: "192.168.200.37"
@@ -16,14 +16,23 @@
 
   tasks:
 
-    - name: Obter IP principal de forma segura e genérica
-      win_command: powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress)"
+    - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18)
+      win_command: powershell -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { ($_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.10.4.*' -or $_.IPAddress -like '10.10.0.*' -or $_.IPAddress -like '172.18.*') -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress"
       register: ip_output
 
-    - name: Definir IP e Hostname
+    - name: Definir IP e Hostname formatado
       set_fact:
         ip_do_host: "{{ ip_output.stdout | trim }}"
-        zabbix_hostname: "{{ ('WINDOWS-' ~ ip_output.stdout | replace('.', '-') | regex_replace('[^A-Za-z0-9\\-]', '') ) | trim }}"
+        zabbix_hostname: >-
+          {{
+            (
+              ('EQUINIX SP3 - ' if ip_do_host.startswith('192.168') else
+               'ALPHAVILLE - ' if ip_do_host.startswith('10.10.4') else
+               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') else
+               'DESCONHECIDO - ')
+              ~ ansible_hostname | upper
+            ) | trim
+          }}
 
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
@@ -190,7 +199,6 @@
       when: zabbix_host_check.json.result | length == 0
       register: zabbix_create_result
 
-
     - name: Mostrar resposta da criação
       debug:
         var: zabbix_create_result.json
@@ -198,26 +206,6 @@
       run_once: true
       when: zabbix_host_check.json.result | length == 0
 
-    - name: Buscar nome do host criado
-      delegate_to: localhost
-      run_once: true
-      when: zabbix_create_result is defined and zabbix_create_result.json.result is defined
-      uri:
-        url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-        method: POST
-        body_format: json
-        headers:
-          Content-Type: "application/json"
-        body:
-          jsonrpc: "2.0"
-          method: "host.get"
-          params:
-            output: ["hostid", "host", "name"]
-            hostids: ["{{ zabbix_create_result.json.result.hostids[0] }}"]
-          auth: "{{ zabbix_auth_response.json.result }}"
-          id: 6
-      register: zabbix_host_lookup
-    
     - name: Mostrar nome do host já existente
       when: zabbix_host_check.json.result | length > 0
       delegate_to: localhost
