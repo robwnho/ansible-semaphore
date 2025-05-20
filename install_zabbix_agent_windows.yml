@@ -12,8 +12,8 @@
     zabbix_template_name: "Windows by Zabbix agent"
     zabbix_agent_version: "6.4.10"
     zabbix_major_version: "6.4"
-    zabbix_install_path: 'C:\temp'
-    zabbix_conf_path: 'C:\Program Files\Zabbix Agent 2\zabbix_agent2.conf'
+    zabbix_install_path: 'C:\\temp'
+    zabbix_conf_path: 'C:\\Program Files\\Zabbix Agent 2\\zabbix_agent2.conf'
 
   tasks:
 
@@ -29,11 +29,11 @@
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
-        dest: "{{ zabbix_install_path }}\zabbix_agent2.msi"
+        dest: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
 
     - name: Instalar Zabbix Agent 2
       win_package:
-        path: "{{ zabbix_install_path }}\zabbix_agent2.msi"
+        path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
         arguments: "/quiet"
 
