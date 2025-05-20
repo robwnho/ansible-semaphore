@@ -77,6 +77,8 @@
         start_mode: auto
 
     - name: Autenticar na API Zabbix
+  delegate_to: localhost
+  run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -94,6 +96,8 @@
       register: zabbix_auth_response
 
     - name: Verificar se host já existe
+  delegate_to: localhost
+  run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -111,6 +115,8 @@
       register: zabbix_host_check
 
     - name: Buscar o groupid
+  delegate_to: localhost
+  run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -132,6 +138,8 @@
         zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
 
     - name: Buscar o template
+  delegate_to: localhost
+  run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -154,6 +162,8 @@
         zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
 
     - name: Criar host no Zabbix se não existir
+  delegate_to: localhost
+  run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -191,5 +201,7 @@
 
     - name: Mostrar resposta da criação
       debug:
+      delegate_to: localhost
+      run_once: true
         var: zabbix_create_result.json
       when: zabbix_host_check.json.result | length == 0
