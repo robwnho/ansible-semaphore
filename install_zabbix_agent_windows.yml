@@ -200,8 +200,8 @@
       register: zabbix_create_result
 
     - name: Mostrar resposta da criação
-      debug:
-      delegate_to: localhost
-      run_once: true
+  delegate_to: localhost
+  run_once: true
+  debug:
         var: zabbix_create_result.json
       when: zabbix_host_check.json.result | length == 0
