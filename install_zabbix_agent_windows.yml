@@ -77,13 +77,14 @@
         zabbix_hostname: >-
           {{
             (
-              ('EQUINIX SP3 - ' if ansible_facts['ansible_default_ipv4']['address'].startswith('192.168') else
-               'ALPHAVILLE - ' if ansible_facts['ansible_default_ipv4']['address'].startswith('10.10.4') else
-               'ITAPEVI - ' if ansible_facts['ansible_default_ipv4']['address'].startswith('10.10.0') or ansible_facts['ansible_default_ipv4']['address'].startswith('172.18') else
+              ('EQUINIX SP3 - ' if ansible_facts['ansible_ip_addresses'][0].startswith('192.168') else
+               'ALPHAVILLE - ' if ansible_facts['ansible_ip_addresses'][0].startswith('10.10.4') else
+               'ITAPEVI - ' if ansible_facts['ansible_ip_addresses'][0].startswith('10.10.0') or ansible_facts['ansible_ip_addresses'][0].startswith('172.18') else
                'DESCONHECIDO - ')
               + ansible_facts['ansible_hostname'] | upper
             ).strip()
           }}
+
 
     - name: Autenticar na API Zabbix
       uri:
