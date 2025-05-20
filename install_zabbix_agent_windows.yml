@@ -181,7 +181,7 @@
                   "type": 1,
                   "main": 1,
                   "useip": 1,
-                  "ip": "{{ ansible_facts['ansible_default_ipv4']['address'] }}",
+                  "ip": "{{ ansible_facts['ansible_ip_addresses'][0] }}",
                   "dns": "",
                   "port": "10050"
                 }
