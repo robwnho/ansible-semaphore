@@ -1,4 +1,4 @@
-- name: Instala e registra o Zabbix Agent 6.4 no Windows
+- name: Instala e registra o Zabbix Agent 2 no Windows
   hosts: windows
   gather_facts: yes
 
@@ -16,16 +16,34 @@
 
   tasks:
 
-    - name: Baixar instalador do Zabbix Agent 6.4
-      win_get_url:
-        url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
-        dest: "{{ zabbix_install_path }}\\zabbix_agent.msi"
-
-    - name: Instalar Zabbix Agent
+    - name: Remover instalação anterior (opcional)
       win_package:
-        path: "{{ zabbix_install_path }}\\zabbix_agent.msi"
+        product_name: "Zabbix Agent 2"
+        state: absent
+      ignore_errors: yes
+
+    - name: Baixar instalador do Zabbix Agent 2
+      win_get_url:
+        url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
+        dest: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
+
+    - name: Instalar Zabbix Agent 2
+      win_package:
+        path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
         arguments: "/quiet"
+
+    - name: Comentar parâmetros antigos no conf
+      win_lineinfile:
+        path: "{{ zabbix_conf_path }}"
+        regexp: '^{{ item }}='
+        line: "# Removido por Ansible - {{ item }}"
+        state: present
+        backup: yes
+      loop:
+        - Server
+        - ServerActive
+        - Hostname
 
     - name: Configurar Server
       win_lineinfile:
@@ -48,9 +66,9 @@
         line: "Hostname={{ inventory_hostname }}"
         backup: yes
 
-    - name: Reiniciar Zabbix Agent
+    - name: Reiniciar Zabbix Agent 2
       win_service:
-        name: "Zabbix Agent"
+        name: "Zabbix Agent 2"
         state: restarted
         start_mode: auto
 
@@ -67,7 +85,7 @@
             ).strip()
           }}
 
-    - name: Autenticar na API Zabbix e obter token
+    - name: Autenticar na API Zabbix
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -84,7 +102,7 @@
           auth: null
       register: zabbix_auth_response
 
-    - name: Verificar se o host já existe
+    - name: Verificar se host já existe
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
@@ -144,7 +162,7 @@
       set_fact:
         zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
 
-    - name: Criar host no Zabbix se não existir
+    - name: Criar host no Zabbix se ainda não existir
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
