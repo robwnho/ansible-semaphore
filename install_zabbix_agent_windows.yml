@@ -218,6 +218,9 @@
           id: 6
       register: zabbix_host_lookup
     
-    - name: Mostrar nome do host criado
+    - name: Mostrar nome do host já existente
+      when: zabbix_host_check.json.result | length > 0
+      delegate_to: localhost
+      run_once: true
       debug:
-        var: zabbix_host_lookup.json.result
+        msg: "Host já existe no Zabbix com nome: {{ zabbix_host_check.json.result[0].name }}"
