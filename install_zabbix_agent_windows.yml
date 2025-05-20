@@ -96,112 +96,112 @@
         register: zabbix_auth_response
 
     - name: Verificar se host já existe
-    delegate_to: localhost
-    run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body:
-            jsonrpc: "2.0"
-            method: "host.get"
-            params:
-              filter:
-                host: ["{{ zabbix_hostname }}"]
-            auth: "{{ zabbix_auth_response.json.result }}"
-            id: 2
-        register: zabbix_host_check
+      delegate_to: localhost
+      run_once: true
+          uri:
+            url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+            method: POST
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            body:
+              jsonrpc: "2.0"
+              method: "host.get"
+              params:
+                filter:
+                  host: ["{{ zabbix_hostname }}"]
+              auth: "{{ zabbix_auth_response.json.result }}"
+              id: 2
+          register: zabbix_host_check
 
     - name: Buscar o groupid
-    delegate_to: localhost
-    run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body:
-            jsonrpc: "2.0"
-            method: "hostgroup.get"
-            params:
-              filter:
-                name: ["{{ zabbix_host_group }}"]
-            auth: "{{ zabbix_auth_response.json.result }}"
-            id: 3
-        register: zabbix_group_response
+      delegate_to: localhost
+      run_once: true
+          uri:
+            url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+            method: POST
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            body:
+              jsonrpc: "2.0"
+              method: "hostgroup.get"
+              params:
+                filter:
+                  name: ["{{ zabbix_host_group }}"]
+              auth: "{{ zabbix_auth_response.json.result }}"
+              id: 3
+          register: zabbix_group_response
 
     - name: Definir groupid
       set_fact:
         zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
 
     - name: Buscar o template
-    delegate_to: localhost
-    run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body:
-            jsonrpc: "2.0"
-            method: "template.get"
-            params:
-              output: ["templateid", "name"]
-              filter:
-                host: ["{{ zabbix_template_name }}"]
-            auth: "{{ zabbix_auth_response.json.result }}"
-            id: 4
-        register: zabbix_template_response
+      delegate_to: localhost
+      run_once: true
+          uri:
+            url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+            method: POST
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            body:
+              jsonrpc: "2.0"
+              method: "template.get"
+              params:
+                output: ["templateid", "name"]
+                filter:
+                  host: ["{{ zabbix_template_name }}"]
+              auth: "{{ zabbix_auth_response.json.result }}"
+              id: 4
+          register: zabbix_template_response
 
     - name: Definir templateid
       set_fact:
         zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
 
     - name: Criar host no Zabbix se não existir
-    delegate_to: localhost
-    run_once: true
-        uri:
-          url: "{{ zabbix_api_url }}/api_jsonrpc.php"
-          method: POST
-          body_format: json
-          headers:
-            Content-Type: "application/json"
-          body: >
-            {
-              "jsonrpc": "2.0",
-              "method": "host.create",
-              "params": {
-                "host": "{{ zabbix_hostname }}",
-                "interfaces": [
-                  {
-                    "type": 1,
-                    "main": 1,
-                    "useip": 1,
-                    "ip": "{{ ip_do_host }}",
-                    "dns": "",
-                    "port": "10050"
-                  }
-                ],
-                "groups": [
-                  { "groupid": {{ zabbix_groupid }} }
-                ],
-                "templates": [
-                  { "templateid": {{ zabbix_templateid }} }
-                ]
-              },
-              "auth": "{{ zabbix_auth_response.json.result }}",
-              "id": 5
-            }
-        when: zabbix_host_check.json.result | length == 0
-        register: zabbix_create_result
+      delegate_to: localhost
+      run_once: true
+          uri:
+            url: "{{ zabbix_api_url }}/api_jsonrpc.php"
+            method: POST
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            body: >
+              {
+                "jsonrpc": "2.0",
+                "method": "host.create",
+                "params": {
+                  "host": "{{ zabbix_hostname }}",
+                  "interfaces": [
+                    {
+                      "type": 1,
+                      "main": 1,
+                      "useip": 1,
+                      "ip": "{{ ip_do_host }}",
+                      "dns": "",
+                      "port": "10050"
+                    }
+                  ],
+                  "groups": [
+                    { "groupid": {{ zabbix_groupid }} }
+                  ],
+                  "templates": [
+                    { "templateid": {{ zabbix_templateid }} }
+                  ]
+                },
+                "auth": "{{ zabbix_auth_response.json.result }}",
+                "id": 5
+              }
+          when: zabbix_host_check.json.result | length == 0
+          register: zabbix_create_result
 
     - name: Mostrar resposta da criação
-    delegate_to: localhost
-    run_once: true
-    debug:
-          var: zabbix_create_result.json
-        when: zabbix_host_check.json.result | length == 0
+      delegate_to: localhost
+      run_once: true
+      debug:
+            var: zabbix_create_result.json
+          when: zabbix_host_check.json.result | length == 0
