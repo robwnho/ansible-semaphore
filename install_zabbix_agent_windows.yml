@@ -58,10 +58,12 @@
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
         dest: "{{ zabbix_install_path | regex_replace('\\\\', '\\\\\\\\') }}\\zabbix_agent2.msi"
 
-    - name: Verificar se Zabbix Agent 2 já está instalado via registro
-      win_reg_stat:
-        path: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Zabbix Agent 2 (64-bit)"
-      register: zabbix_reg_status
+    - name: Obter lista de pacotes instalados
+      ansible.windows.win_package_facts:
+    
+    - name: Verificar se Zabbix Agent 2 já está instalado
+      set_fact:
+        zabbix_already_installed: "{{ ansible_facts.packages is defined and (ansible_facts.packages | selectattr('name', 'equalto', 'Zabbix Agent 2 (64-bit)') | list | length) > 0 }}"
 
     - name: Instalar Zabbix Agent 2 se necessário
       win_package:
