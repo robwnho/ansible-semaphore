@@ -28,24 +28,21 @@
         path: C:\zabbix
         state: absent
 
-    - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18, 10.40.3)
+    - name: Obter IP da interface com faixa esperada
       win_command: powershell -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { ($_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.10.4.*' -or $_.IPAddress -like '10.40.3.*' -or $_.IPAddress -like '10.10.1.*' -or $_.IPAddress -like '10.10.0.*' -or $_.IPAddress -like '172.18.*') -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress"
       register: ip_output
       failed_when: ip_output.stdout | trim == ""
 
-    - name: Definir variável ip_do_host
+    - name: Definir IP e hostname formatado
       set_fact:
         ip_do_host: "{{ ip_output.stdout | trim }}"
-
-    - name: Gerar hostname Zabbix baseado no IP e hostname real
-      set_fact:
         zabbix_hostname: >-
           {{
             (
-              ('EQUINIX SP3 - ' if ip_do_host.startswith('192.168') else
-               'ALPHAVILLE - ' if ip_do_host.startswith('10.10.4') else
-               'AWS - ' if ip_do_host.startswith('10.40.3') else
-               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') or ip_do_host.startswith('10.10.1') else
+              ('EQUINIX SP3 - ' if ip_output.stdout.startswith('192.168') else
+               'ALPHAVILLE - ' if ip_output.stdout.startswith('10.10.4') else
+               'AWS - ' if ip_output.stdout.startswith('10.40.3') else
+               'ITAPEVI - ' if ip_output.stdout.startswith('10.10.0') or ip_output.stdout.startswith('172.18') or ip_output.stdout.startswith('10.10.1') else
                'DESCONHECIDO - ')
               ~ ansible_hostname | upper
             ) | trim
@@ -54,126 +51,97 @@
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
-        dest: "{{ zabbix_install_path | regex_replace('\\\\', '\\\\\\\\') }}\\\\zabbix_agent2.msi"
+        dest: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
 
-    - name: Verificar se Zabbix Agent 2 já está instalado
-      win_shell: |
-        Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Zabbix Agent 2 (64-bit)" }
-      register: zabbix_agent_check
-      changed_when: false
-      failed_when: false
-    
-    - name: Definir se o agente já está instalado
-      set_fact:
-        zabbix_already_installed: "{{ zabbix_agent_check.stdout | length > 0 }}"
+    - name: Verificar se Zabbix Agent 2 já está instalado via registro
+      win_reg_stat:
+        path: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Zabbix Agent 2 (64-bit)"
+      register: zabbix_reg_status
 
-    - name: Instalar Zabbix Agent 2
+    - name: Instalar Zabbix Agent 2 se necessário
       win_package:
         path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
-        arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME=\"{{ zabbix_hostname }}\""
-      when: not zabbix_already_installed
-    
-    - name: Reiniciar Zabbix Agent 2
+        arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME={{ zabbix_hostname | quote }}"
+      when: not zabbix_reg_status.exists
+
+    - name: Garantir serviço iniciado
       win_service:
         name: "Zabbix Agent 2"
-        state: restarted
+        state: started
         start_mode: auto
 
     - name: Autenticar na API Zabbix
       delegate_to: localhost
-      run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
         body_format: json
-        headers:
-          Content-Type: "application/json"
+        headers: { Content-Type: "application/json" }
         body:
           jsonrpc: "2.0"
           method: "user.login"
-          params:
-            username: "{{ zabbix_api_user }}"
-            password: "{{ zabbix_api_pass }}"
+          params: { username: "{{ zabbix_api_user }}", password: "{{ zabbix_api_pass }}" }
           id: 1
           auth: null
       register: zabbix_auth_response
 
     - name: Verificar se host já existe
       delegate_to: localhost
-      run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
         body_format: json
-        headers:
-          Content-Type: "application/json"
+        headers: { Content-Type: "application/json" }
         body:
           jsonrpc: "2.0"
           method: "host.get"
           params:
-            filter:
-              host: ["{{ zabbix_hostname }}"]
+            filter: { host: ["{{ zabbix_hostname }}"] }
           auth: "{{ zabbix_auth_response.json.result }}"
           id: 2
       register: zabbix_host_check
 
-    - name: Buscar o groupid
+    - name: Buscar groupid
       delegate_to: localhost
-      run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
         body_format: json
-        headers:
-          Content-Type: "application/json"
+        headers: { Content-Type: "application/json" }
         body:
           jsonrpc: "2.0"
           method: "hostgroup.get"
           params:
-            filter:
-              name: ["{{ zabbix_host_group }}"]
+            filter: { name: ["{{ zabbix_host_group }}"] }
           auth: "{{ zabbix_auth_response.json.result }}"
           id: 3
       register: zabbix_group_response
 
-    - name: Definir groupid
-      set_fact:
-        zabbix_groupid: "{{ zabbix_group_response.json.result[0].groupid | int }}"
-
-    - name: Buscar o template
+    - name: Buscar templateid
       delegate_to: localhost
-      run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
         body_format: json
-        headers:
-          Content-Type: "application/json"
+        headers: { Content-Type: "application/json" }
         body:
           jsonrpc: "2.0"
           method: "template.get"
           params:
             output: ["templateid", "name"]
-            filter:
-              host: ["{{ zabbix_template_name }}"]
+            filter: { host: ["{{ zabbix_template_name }}"] }
           auth: "{{ zabbix_auth_response.json.result }}"
           id: 4
       register: zabbix_template_response
 
-    - name: Definir templateid
-      set_fact:
-        zabbix_templateid: "{{ zabbix_template_response.json.result[0].templateid | int }}"
-
     - name: Criar host no Zabbix se não existir
       delegate_to: localhost
-      run_once: true
       uri:
         url: "{{ zabbix_api_url }}/api_jsonrpc.php"
         method: POST
         body_format: json
-        headers:
-          Content-Type: "application/json"
+        headers: { Content-Type: "application/json" }
         body:
           jsonrpc: "2.0"
           method: "host.create"
@@ -187,24 +155,22 @@
                 dns: ""
                 port: "10050"
             groups:
-              - groupid: "{{ zabbix_groupid }}"
+              - groupid: "{{ zabbix_group_response.json.result[0].groupid }}"
             templates:
-              - templateid: "{{ zabbix_templateid }}"
+              - templateid: "{{ zabbix_template_response.json.result[0].templateid }}"
           auth: "{{ zabbix_auth_response.json.result }}"
           id: 5
       when: zabbix_host_check.json.result | length == 0
       register: zabbix_create_result
 
-    - name: Mostrar resposta da criação
+    - name: Mostrar resultado da criação do host
+      delegate_to: localhost
       debug:
         var: zabbix_create_result.json
-      delegate_to: localhost
-      run_once: true
       when: zabbix_host_check.json.result | length == 0
 
-    - name: Mostrar nome do host já existente
-      when: zabbix_host_check.json.result | length > 0
+    - name: Mostrar mensagem se host já existe
       delegate_to: localhost
-      run_once: true
       debug:
-        msg: "Host já existe no Zabbix com nome: {{ zabbix_host_check.json.result[0].name }}"
+        msg: "Host {{ zabbix_hostname }} já existe no Zabbix"
+      when: zabbix_host_check.json.result | length > 0
