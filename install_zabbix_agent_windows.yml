@@ -48,6 +48,11 @@
             ) | trim
           }}
 
+    - name: Criar diretório {{ zabbix_install_path }} se não existir
+      win_file:
+        path: "{{ zabbix_install_path }}"
+        state: directory
+
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
