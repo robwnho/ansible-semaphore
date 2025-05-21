@@ -28,7 +28,7 @@
         path: C:\zabbix
         state: absent
 
-    - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18)
+    - name: Obter IP da interface com faixa esperada (192.168, 10.10.4, 10.10.0, 172.18, 10.40.3)
       win_command: powershell -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { ($_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.10.4.*' -or $_.IPAddress -like '10.10.0.*' -or $_.IPAddress -like '172.18.*') -and $_.IPAddress -ne '127.0.0.1' } | Sort-Object InterfaceIndex | Select-Object -First 1 -ExpandProperty IPAddress"
       register: ip_output
       failed_when: ip_output.stdout | trim == ""
@@ -44,7 +44,8 @@
             (
               ('EQUINIX SP3 - ' if ip_do_host.startswith('192.168') else
                'ALPHAVILLE - ' if ip_do_host.startswith('10.10.4') else
-               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') else
+               'AWS - ' if ip_do_host.startswith('10.40.3') else
+               'ITAPEVI - ' if ip_do_host.startswith('10.10.0') or ip_do_host.startswith('172.18') or ip_do_host.startswith('10.10.1') else
                'DESCONHECIDO - ')
               ~ ansible_hostname | upper
             ) | trim
@@ -55,12 +56,22 @@
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
         dest: "{{ zabbix_install_path | regex_replace('\\\\', '\\\\\\\\') }}\\\\zabbix_agent2.msi"
 
+    - name: Verificar se Zabbix Agent 2 já está instalado
+      win_package_facts:
+      register: zabbix_facts
+    
+    - name: Definir se já está instalado
+      set_fact:
+        zabbix_already_installed: >-
+          {{ zabbix_facts.installed_packages | selectattr('name', 'equalto', 'Zabbix Agent 2 (64-bit)') | list | length > 0 }}
+
     - name: Instalar Zabbix Agent 2
       win_package:
         path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
         arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME=\"{{ zabbix_hostname }}\""
-
+      when: not zabbix_already_installed
+    
     - name: Reiniciar Zabbix Agent 2
       win_service:
         name: "Zabbix Agent 2"
