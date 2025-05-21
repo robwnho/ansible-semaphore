@@ -57,13 +57,15 @@
         dest: "{{ zabbix_install_path | regex_replace('\\\\', '\\\\\\\\') }}\\\\zabbix_agent2.msi"
 
     - name: Verificar se Zabbix Agent 2 já está instalado
-      win_package_facts:
-      register: zabbix_facts
+      win_shell: |
+        Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Zabbix Agent 2 (64-bit)" }
+      register: zabbix_agent_check
+      changed_when: false
+      failed_when: false
     
-    - name: Definir se já está instalado
+    - name: Definir se o agente já está instalado
       set_fact:
-        zabbix_already_installed: >-
-          {{ zabbix_facts.installed_packages | selectattr('name', 'equalto', 'Zabbix Agent 2 (64-bit)') | list | length > 0 }}
+        zabbix_already_installed: "{{ zabbix_agent_check.stdout | length > 0 }}"
 
     - name: Instalar Zabbix Agent 2
       win_package:
