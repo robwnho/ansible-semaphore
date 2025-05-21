@@ -48,29 +48,29 @@
             ) | trim
           }}
 
-    - name: Criar diretório de instalação do Zabbix (C:\temp)
-      win_file:
-        path: "{{ zabbix_install_path }}"
-        state: directory
-
     - name: Baixar instalador do Zabbix Agent 2
       win_get_url:
         url: "https://cdn.zabbix.com/zabbix/binaries/stable/{{ zabbix_major_version }}/{{ zabbix_agent_version }}/zabbix_agent2-{{ zabbix_agent_version }}-windows-amd64-openssl.msi"
-        dest: "{{ zabbix_install_path | regex_replace('\\\\', '\\\\\\\\') }}\\zabbix_agent2.msi"
+        dest: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
 
-    - name: Obter lista de pacotes instalados
-      ansible.windows.win_package_facts:
-    
-    - name: Verificar se Zabbix Agent 2 já está instalado
+    - name: Verificar se Zabbix Agent 2 já está instalado via PowerShell
+      win_shell: |
+        $found = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Zabbix Agent 2 (64-bit)" }
+        if ($found) { Write-Host "INSTALLED" }
+      register: zabbix_check
+      changed_when: false
+      failed_when: false
+
+    - name: Definir variável zabbix_already_installed
       set_fact:
-        zabbix_already_installed: "{{ ansible_facts.packages is defined and (ansible_facts.packages | selectattr('name', 'equalto', 'Zabbix Agent 2 (64-bit)') | list | length) > 0 }}"
+        zabbix_already_installed: "{{ 'INSTALLED' in zabbix_check.stdout }}"
 
     - name: Instalar Zabbix Agent 2 se necessário
       win_package:
         path: "{{ zabbix_install_path }}\\zabbix_agent2.msi"
         state: present
         arguments: "/quiet SERVER={{ zabbix_server_ip }} SERVERACTIVE={{ zabbix_server_ip }} HOSTNAME={{ zabbix_hostname | quote }}"
-      when: not zabbix_reg_status.exists
+      when: not zabbix_already_installed
 
     - name: Garantir serviço iniciado
       win_service:
