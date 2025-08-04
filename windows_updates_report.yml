@@ -52,9 +52,7 @@
     - name: Enviar e-mail com o PDF
       community.general.mail:
         host: smtp.office365.com
-        port: 25
-        username: ansible@arklok.com.br
-        password: "l_$[z~[A;E1/FW"
+        
         from: ansible@arklok.com.br
         to: "{{ email_recipient }}"
         subject: "Relatório de Atualizações Pendentes - {{ ansible_date_time.date }}"
